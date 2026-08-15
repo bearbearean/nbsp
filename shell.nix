@@ -10,5 +10,6 @@ pkgs.mkShell rec {
     cargo-make
     release-plz
     gh
+    hl-log-viewer
   ];
 }
