@@ -1,0 +1,3 @@
+[tasks.dev]
+clear = true
+script = "cargo run -q | hl --follow -x always"
