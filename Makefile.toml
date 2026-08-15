@@ -34,3 +34,6 @@ args = ["volume", "rm", "nbsp-pgdata", "--force"]
 [tasks.psql]
 command = "podman"
 args = ["exec", "-it", "nbsp-postgresql", "psql", "-U", "nbsp"]
+
+[tasks.create-migration]
+script = "touch migrations/$(date --iso-8601 | tr -d '-')_$(printf '%03d' $(ls migrations/*.up.sql | wc -l))_edit_me.{up,down}.sql"

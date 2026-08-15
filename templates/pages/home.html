@@ -8,12 +8,10 @@
 </header>
 
 <main class="container">
-  <div class="under-construction">
-    <p>
-      nbsp is currently under construction, check back later!
-      <br>
-      Keep up with the development <a href="https://github.com/bearbearean/nbsp" target="_blank">on GitHub</a>.
-    </p>
+  {% if let Some(notice) = nbsp_homepage_notice %}
+  <div class="homepage-notice">
+    <p>{{ notice|safe }}</p>
   </div>
+  {% endif %}
 </main>
 {% endblock %}

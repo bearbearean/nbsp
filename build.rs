@@ -2,4 +2,6 @@
 
 fn main() {
     memory_serve::load_directory("./assets");
+
+    println!("cargo:rerun-if-changed=migrations");
 }
