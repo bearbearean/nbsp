@@ -15,9 +15,13 @@ use tower_http::{
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
+pub mod templates;
 pub mod utilities;
 
-use utilities::CustomMakeSpan;
+use crate::{
+    templates::Homepage,
+    utilities::{CustomMakeSpan, html},
+};
 
 /// The main function for nbsp.
 #[tokio::main]
@@ -68,5 +72,5 @@ pub async fn main() {
 
 /// The route for `GET /` (the home page)
 pub async fn root() -> impl IntoResponse {
-    "Welcome to nbsp!"
+    html(Homepage {})
 }
