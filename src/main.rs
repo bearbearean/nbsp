@@ -47,7 +47,10 @@ pub async fn main() {
                 .on_response(DefaultOnResponse::new().include_headers(true)),
         );
 
-    let router = Router::new().route("/", routing::get(root)).layer(services);
+    let router = Router::new()
+        .route("/", routing::get(root))
+        .layer(services)
+        .nest("/assets", memory_serve::load!().into_router());
 
     let listener = TcpListener::bind("127.0.0.1:3000")
         .await
