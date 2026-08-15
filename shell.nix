@@ -11,5 +11,6 @@ pkgs.mkShell rec {
     release-plz
     gh
     hl-log-viewer
+    podman
   ];
 }
