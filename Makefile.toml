@@ -1,0 +1,39 @@
+[tasks.dev]
+clear = true
+script = "cargo run -q | hl --follow -x always"
+
+[tasks.make-pg-dir]
+command = "mkdir"
+args = ["-p", "podman/postgresql"]
+
+[tasks.start-db]
+command = "podman"
+dependencies = ["make-pg-dir"]
+args = [
+  "run",
+  "--detach",
+  "--replace",
+  "--name=nbsp-postgresql",
+  "--env=POSTGRES_USER=nbsp",
+  "--env=POSTGRES_PASSWORD=nbsp",
+  "--env=POSTGRES_DB=nbsp",
+  "--volume=nbsp-pgdata:/var/lib/postgresql/18/docker",
+  "--volume=./podman/postgresql:/var/run/postgresql",
+  "postgres:18",
+]
+
+[tasks.stop-db]
+command = "podman"
+args = ["stop", "nbsp-postgresql"]
+
+[tasks.clear-db]
+command = "podman"
+dependencies = ["stop-db"]
+args = ["volume", "rm", "nbsp-pgdata", "--force"]
+
+[tasks.psql]
+command = "podman"
+args = ["exec", "-it", "nbsp-postgresql", "psql", "-U", "nbsp"]
+
+[tasks.create-migration]
+script = "touch migrations/$(date --iso-8601 | tr -d '-')_$(printf '%03d' $(ls migrations/*.up.sql | wc -l))_edit_me.{up,down}.sql"

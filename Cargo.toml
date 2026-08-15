@@ -11,3 +11,15 @@ rust.missing_docs = "warn"
 clippy.missing_docs_in_private_items = "warn"
 
 [dependencies]
+askama = "0.16.0"
+axum = "0.8.9"
+memory-serve = "2.3.0"
+sqlx = { version = "0.9.0", features = ["runtime-tokio", "postgres"] }
+tokio = { version = "1.53.1", features = ["full"] }
+tower = "0.5.3"
+tower-http = { version = "0.7.0", features = ["request-id", "trace", "util"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter", "json"] }
+
+[build-dependencies]
+memory-serve = "2.3.0"

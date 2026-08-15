@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block body %}
+<header class="container page-header">
+  <img class="logo" src="/assets/nbsp-logo.png" alt="nbsp">
+  <h1 class="title">non-breaking space</h1>
+  <p class="subtitle">a thoughtful community forum platform</p>
+</header>
+
+<main class="container">
+  {% if let Some(notice) = nbsp_homepage_notice %}
+  <div class="homepage-notice">
+    <p>{{ notice|safe }}</p>
+  </div>
+  {% endif %}
+</main>
+{% endblock %}
