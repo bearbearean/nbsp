@@ -12,5 +12,6 @@ pkgs.mkShell rec {
     gh
     hl-log-viewer
     podman
+    commitlint
   ];
 }

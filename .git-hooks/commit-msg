@@ -1,0 +1,3 @@
+#!/usr/bin/env sh
+
+commitlint --extends "@commitlint/config-conventional" --edit "$1"
