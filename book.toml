@@ -1,0 +1,15 @@
+[book]
+title = "nbsp"
+description = "non-breaking space: a thoughtful community forum platform"
+authors = ["bearbearean"]
+language = "en"
+src = "docs"
+
+[rust]
+edition = "2024"
+
+[build]
+build-dir = "mdbook"
+
+[output.html]
+cname="nbsp.bearbearean.dev"

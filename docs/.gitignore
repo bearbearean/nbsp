@@ -1,0 +1,8 @@
+# This .gitignore file has to exist otherwise "mdbook serve" doesn't reload
+# the page when a change happens. https://github.com/rust-lang/mdBook/issues/1186
+
+/.direnv
+/result
+/target
+/podman
+/mdbook
