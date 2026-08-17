@@ -4,8 +4,7 @@
 
 use std::net::SocketAddr;
 
-use axum::{Router, extract::State, response::IntoResponse, routing};
-use sqlx::PgPool;
+use axum::{Router, extract::State, routing};
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -17,11 +16,13 @@ use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
 pub mod database;
+pub mod prelude;
 pub mod templates;
 pub mod utilities;
 
 use crate::{
     database::NbspConfig,
+    prelude::*,
     templates::Homepage,
     utilities::{CustomMakeSpan, html},
 };
@@ -37,7 +38,7 @@ pub struct GlobalState {
 
 /// The main function for nbsp.
 #[tokio::main]
-pub async fn main() {
+pub async fn main() -> Result<()> {
     // Setup tracing with JSON logging to stdout
     // By default using the DEBUG level, but can be adjusted using the RUST_LOG environment variable
     tracing_subscriber::registry()
@@ -58,13 +59,15 @@ pub async fn main() {
     // Keep this log as an indicator when nbsp has initially started
     tracing::info!("non-breaking space: a thoughtful community forum platform");
 
-    let pool = crate::database::initialize().await;
+    let pool = crate::database::initialize()
+        .await
+        .context("failed to connect to PostgreSQL, check the NBSP_PG_... environment variables")?;
 
     let global_state = GlobalState {
         pool: pool.clone(),
         config: NbspConfig::load(&pool)
             .await
-            .expect("failed to load NbspConfig"),
+            .context("failed to load NbspConfig, check the nbsp_config table in PostgreSQL")?,
     };
 
     // Set up the tower and axum middlewares/services
@@ -86,7 +89,7 @@ pub async fn main() {
 
     let listener = TcpListener::bind("127.0.0.1:3000")
         .await
-        .expect("bind to 127.0.0.1:3000");
+        .context("failed to bind 127.0.0.1:3000, is the port already in use?")?;
 
     tracing::info!("listening on http://127.0.0.1:3000");
 
@@ -95,7 +98,9 @@ pub async fn main() {
         router.into_make_service_with_connect_info::<SocketAddr>(),
     )
     .await
-    .expect("axum::serve error");
+    .context("failed to serve nbsp on http://127.0.0.1:3000")?;
+
+    Ok(())
 }
 
 /// The route for `GET /` (the home page)
@@ -104,7 +109,7 @@ pub async fn root(
         pool: _pool,
         config,
     }): State<GlobalState>,
-) -> impl IntoResponse {
+) -> WebResult {
     html(Homepage {
         // TODO: Make this default info a struct that can be easily obtained from NbspConfig itself
         nbsp_homepage_notice: config.nbsp_homepage_notice,

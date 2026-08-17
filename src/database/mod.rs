@@ -2,17 +2,15 @@
 
 use std::time::Duration;
 
-use sqlx::{
-    PgPool,
-    postgres::{PgConnectOptions, PgPoolOptions},
-};
+use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 
 mod config;
 
+pub use crate::prelude::*;
 pub use config::NbspConfig;
 
 /// Create the [`sqlx::PgPool`] and run the database migrations.
-pub async fn initialize() -> PgPool {
+pub async fn initialize() -> Result<PgPool> {
     let mut conn_opts = PgConnectOptions::new();
 
     #[cfg(debug_assertions)]
@@ -29,7 +27,7 @@ pub async fn initialize() -> PgPool {
     if let Ok(connection_string) = std::env::var("NBSP_PG_CONNECTION_STRING") {
         conn_opts = connection_string
             .parse()
-            .expect("NBSP_PG_CONNECTION_STRING must be a valid connection string");
+            .context("NBSP_PG_CONNECTION_STRING must be a valid connection string")?;
     }
 
     if let Ok(database) = std::env::var("NBSP_PG_DATABASE") {
@@ -49,7 +47,7 @@ pub async fn initialize() -> PgPool {
     }
 
     if let Ok(port) = std::env::var("NBSP_PG_PORT") {
-        conn_opts = conn_opts.port(port.parse().expect("NBSP_PG_PORT must be a u16"));
+        conn_opts = conn_opts.port(port.parse().context("NBSP_PG_PORT must be a u16")?);
     }
 
     let pool_opts = PgPoolOptions::new().acquire_timeout(Duration::from_secs(5));
@@ -57,12 +55,12 @@ pub async fn initialize() -> PgPool {
     let pool = pool_opts
         .connect_with(conn_opts)
         .await
-        .expect("failed to connect to PostgreSQL");
+        .context("failed to connect to PostgreSQL")?;
 
     sqlx::migrate!("./migrations/")
         .run(&pool)
         .await
-        .expect("failed to run migrations");
+        .context("failed to run database migrations")?;
 
-    pool
+    Ok(pool)
 }
