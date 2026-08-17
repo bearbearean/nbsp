@@ -4,7 +4,7 @@
 
 use std::net::SocketAddr;
 
-use axum::{Router, extract::State, routing};
+use axum::{Router, extract::State, http::HeaderMap, routing};
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -23,8 +23,8 @@ pub mod utilities;
 use crate::{
     database::NbspConfig,
     prelude::*,
-    templates::Homepage,
-    utilities::{CustomMakeSpan, html},
+    templates::{Homepage, HttpStatusPage},
+    utilities::{CustomMakeSpan, html, html_with_status},
 };
 
 /// The struct for [`axum::extract::State`] with all global state
@@ -83,6 +83,7 @@ pub async fn main() -> Result<()> {
 
     let router = Router::new()
         .route("/", routing::get(root))
+        .fallback(fallback_http_404)
         .layer(services)
         .nest("/assets", memory_serve::load!().into_router())
         .with_state(global_state);
@@ -116,4 +117,29 @@ pub async fn root(
         nbsp_community_title: config.nbsp_community_title,
         nbsp_community_subtitle: config.nbsp_community_subtitle,
     })
+}
+
+/// The fallback route when no other routes match (ie. HTTP 404)
+pub async fn fallback_http_404(
+    headers: HeaderMap,
+    State(GlobalState {
+        pool: _pool,
+        config,
+    }): State<GlobalState>,
+) -> WebResult {
+    let x_request_id = headers
+        .get("x-request-id")
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("");
+
+    html_with_status(
+        HttpStatusPage {
+            nbsp_community_title: config.nbsp_community_title,
+            nbsp_community_subtitle: config.nbsp_community_subtitle,
+            title: "Page not found - HTTP 404",
+            description: "Whatever you're looking for, we can't seem to find it!",
+            x_request_id,
+        },
+        StatusCode::NOT_FOUND,
+    )
 }

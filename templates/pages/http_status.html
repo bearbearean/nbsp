@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block body %}
+<main class="container http-status-page">
+  <h1 class="title">{{ title }}</h1>
+  <p class="description">{{ description }}</p>
+  <p class="x-request-id">x-request-id: {{ x_request_id }}</p>
+</main>
+{% endblock %}
