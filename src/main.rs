@@ -57,11 +57,6 @@ pub async fn main() {
 
     let pool = crate::database::initialize().await;
 
-    #[cfg(debug_assertions)]
-    {
-        sqlx::query(r#"UPDATE nbsp_config SET value = 'nbsp is currently under construction, check back later!<br>Keep up with the development <a href="https://github.com/bearbearean/nbsp" target="_blank">on GitHub</a>.' WHERE key = 'nbsp_homepage_notice';"#).execute(&pool).await.unwrap();
-    }
-
     let global_state = GlobalState {
         pool: pool.clone(),
         config: NbspConfig::load(&pool)
