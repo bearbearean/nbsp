@@ -16,6 +16,12 @@ pub struct NbspConfig {
     ///
     /// If set to `NULL`/`None` no notice will be shown
     pub nbsp_homepage_notice: Option<String>,
+
+    /// The title/name of the instance.
+    pub nbsp_community_title: String,
+
+    /// The subtitle/byline of the instance.
+    pub nbsp_community_subtitle: String,
 }
 
 impl NbspConfig {
@@ -29,17 +35,31 @@ impl NbspConfig {
         let mut config = Self {
             nbsp_base_url: String::new(),
             nbsp_homepage_notice: None,
+            nbsp_community_title: String::new(),
+            nbsp_community_subtitle: String::new(),
         };
 
-        for (key, value) in rows {
+        for (key, value) in &rows {
             if key == "nbsp_base_url"
-                && let Some(value) = value.as_ref()
+                && let Some(value) = value
             {
-                config.nbsp_base_url = value.to_string();
+                config.nbsp_base_url = value.clone();
             }
 
             if key == "nbsp_homepage_notice" {
-                config.nbsp_homepage_notice = value;
+                config.nbsp_homepage_notice = value.clone();
+            }
+
+            if key == "nbsp_community_title" {
+                config.nbsp_community_title = value
+                    .clone()
+                    .unwrap_or_else(|| "non-breaking space".to_string());
+            }
+
+            if key == "nbsp_community_subtitle" {
+                config.nbsp_community_subtitle = value
+                    .clone()
+                    .unwrap_or_else(|| "a thoughtful community forum platform".to_string());
             }
         }
 

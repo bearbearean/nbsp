@@ -106,5 +106,7 @@ pub async fn root(
 ) -> impl IntoResponse {
     html(Homepage {
         nbsp_homepage_notice: config.nbsp_homepage_notice,
+        nbsp_community_title: config.nbsp_community_title,
+        nbsp_community_subtitle: config.nbsp_community_subtitle,
     })
 }
