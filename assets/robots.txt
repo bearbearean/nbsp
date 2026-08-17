@@ -1,0 +1,4 @@
+# By default, block all scraping
+
+User-agent: *
+Disallow: /
