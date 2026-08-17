@@ -38,6 +38,8 @@ pub struct GlobalState {
 /// The main function for nbsp.
 #[tokio::main]
 pub async fn main() {
+    // Setup tracing with JSON logging to stdout
+    // By default using the DEBUG level, but can be adjusted using the RUST_LOG environment variable
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::fmt::layer()
@@ -53,6 +55,7 @@ pub async fn main() {
         )
         .init();
 
+    // Keep this log as an indicator when nbsp has initially started
     tracing::info!("non-breaking space: a thoughtful community forum platform");
 
     let pool = crate::database::initialize().await;
@@ -64,8 +67,11 @@ pub async fn main() {
             .expect("failed to load NbspConfig"),
     };
 
+    // Set up the tower and axum middlewares/services
     let services = ServiceBuilder::new()
+        // Add an x-request-id HTTP header to every request to group all logs together for that request
         .set_x_request_id(MakeRequestUuid {})
+        // Set up tracing using our CustomMakeSpan and include headers on the response trace
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(CustomMakeSpan {})
@@ -100,6 +106,7 @@ pub async fn root(
     }): State<GlobalState>,
 ) -> impl IntoResponse {
     html(Homepage {
+        // TODO: Make this default info a struct that can be easily obtained from NbspConfig itself
         nbsp_homepage_notice: config.nbsp_homepage_notice,
         nbsp_community_title: config.nbsp_community_title,
         nbsp_community_subtitle: config.nbsp_community_subtitle,
