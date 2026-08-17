@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.0.2](https://github.com/bearbearean/nbsp/compare/v0.0.1...v0.0.2) - 2026-08-17
+
+### Added
+
+- add 2 options to nbsp_config for configuring the instance title and subtitle
+
+### Other
+
+- dev branch ([#4](https://github.com/bearbearean/nbsp/pull/4))
+- remove unneeded testing homepage notice
+
 ## [0.0.1](https://github.com/bearbearean/nbsp/compare/v0.0.0...v0.0.1) - 2026-08-16
 
 ### Other
