@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.0.3](https://github.com/bearbearean/nbsp/compare/v0.0.2...v0.0.3) - 2026-08-18
+
+### Added
+
+- add a basic footer with the nbsp version number
+- *(nbsp_config)* add a way to inject extra html in the head and body
+- add a generic permanent redirects handler, starting with /robots.txt -> /assets/robots.txt
+
+### Fixed
+
+- propagate x-request-id to responses
+
+### Other
+
+- add nbsp_config documentation
+- pass NbspConfig to templates directly
+
 ## [0.0.2](https://github.com/bearbearean/nbsp/compare/v0.0.1...v0.0.2) - 2026-08-17
 
 ### Added
