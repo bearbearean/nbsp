@@ -4,15 +4,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ nbsp_community_title }}</title>
+  <title>{{ config.nbsp_community_title }}</title>
   {% block head %}{% endblock %}
   <link rel="shortcut icon" href="/assets/nbsp-logo.png" type="image/png">
   <link rel="stylesheet" href="/assets/vendor/modern-normalize-3.0.1.css">
   <link rel="stylesheet" href="/assets/css/nbsp.css">
+
+  {#- Keep this as last in the head #}
+  {{ config.nbsp_html_head_extra|safe }}
 </head>
 
 <body>
   {% block body %}{% endblock %}
+
+  <footer class="container page-footer">
+    <p class="slogan">
+      <a href="https://nbsp.bearbearean.dev" target="_blank">
+        <b>non-breaking space</b><br>a thoughtful community forum platform
+      </a>
+    </p>
+    <p class="version">
+      <a href="https://github.com/bearbearean/nbsp/releases/tag/v{{ env!("CARGO_PKG_VERSION") }}" target="_blank">
+        v{{ env!("CARGO_PKG_VERSION") }}
+      </a>
+    </p>
+  </footer>
+
+  {#- Keep this as last in the body #}
+  {{ config.nbsp_html_body_extra|safe }}
 </body>
 
 </html>

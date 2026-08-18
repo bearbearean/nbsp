@@ -22,6 +22,12 @@ pub struct NbspConfig {
 
     /// The subtitle/byline of the instance.
     pub nbsp_community_subtitle: String,
+
+    /// Any additional HTML to add at the end of `<head>` in templates
+    pub nbsp_html_head_extra: String,
+
+    /// Any additional HTML to add at the end of `<body>` in templates
+    pub nbsp_html_body_extra: String,
 }
 
 impl NbspConfig {
@@ -37,6 +43,8 @@ impl NbspConfig {
             nbsp_homepage_notice: None,
             nbsp_community_title: String::new(),
             nbsp_community_subtitle: String::new(),
+            nbsp_html_head_extra: String::new(),
+            nbsp_html_body_extra: String::new(),
         };
 
         for (key, value) in &rows {
@@ -60,6 +68,18 @@ impl NbspConfig {
                 config.nbsp_community_subtitle = value
                     .clone()
                     .unwrap_or_else(|| "a thoughtful community forum platform".to_string());
+            }
+
+            if key == "nbsp_html_head_extra"
+                && let Some(value) = value
+            {
+                config.nbsp_html_head_extra = value.clone();
+            }
+
+            if key == "nbsp_html_body_extra"
+                && let Some(value) = value
+            {
+                config.nbsp_html_body_extra = value.clone();
             }
         }
 

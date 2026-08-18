@@ -1,0 +1,79 @@
+# Configuration
+
+From the beginning of the development of nbsp, instance-wide configuration has been considered through the use of a database table called `nbsp_config`.
+
+This table has a simple key-value structure where each key is unique and configures something about nbsp. For example, the `nbsp_community_title` key determines the title/the main name of the nbsp instance.
+
+## Making changes
+
+To make changes to your nbsp configuration, the only option at the moment is to connect directly to the database with `psql` and run an `UPDATE` query. Because the `nbsp_config` table only has 3 columns: `config_id`, `key` and `value`, an update is easy to do:
+
+```sql
+UPDATE nbsp_config SET value = 'nbsp.example' WHERE key = 'nbsp_community_title';
+```
+
+> [!TIP]
+> Take care when working with lots of text to escape your single quotes by doubling them up:
+>
+> ```sql
+> UPDATE nbsp_config
+> SET value = 'I''m an apostrophe!' WHERE key = 'nbsp_community_subtitle';
+> /*            ^^ Escaped single quote */
+> ```
+
+## Applying your changes
+
+Once you've made a change to `nbsp_config` you may notice it is not updated immediately on a running instance. This is because at the moment the `nbsp_config` is only read on the startup phase of nbsp.
+
+So to apply any changes you've made you will need to restart nbsp.
+
+## Available options
+
+### nbsp_base_url
+
+The reachable base URL for the nbsp instance. This should start with `https://`
+
+* Available in versions `>=0.0.1`
+* Defaults to `https://nbsp.example.com`
+
+### nbsp_homepage_notice
+
+An optional key to put some text or a notice that will be displayed in a yellow text box on the homepage.
+
+* Available in versions `>=0.0.1`
+* Defaults to `NULL`, no value
+
+### nbsp_community_title
+
+The title or main name of the community. This is used in various places such as the `<title>`, the site header, etc.
+
+* Available in versions `>=0.0.2`
+* Defaults to `non-breaking space`
+
+### nbsp_community_subtitle
+
+The subtitle or short description of the community. This is used in the site header below [`nbsp_community_title`](#nbsp_community_title).
+
+* Available in versions `>=0.0.2`
+* Defaults to `a thoughtful community forum platform`
+
+### nbsp_html_head_extra
+
+Any additional HTML you may want to put at the end of the `<head>` tag. Such as additional `<link>` tags or other things.
+
+> [!NOTE]
+> The contents from this key are included **as-is** in the HTML, **it is not sanitized** before being inserted.
+
+* Available in versions `>=0.0.3`
+* Defaults to `NULL`, no value
+
+### nbsp_html_body_extra
+
+Any additional HTML you may want to put at the end of the `<body>` tag. Such as additional `<script>` tags or other things.
+
+> [!NOTE]
+> The contents from this key are included **as-is** in the HTML, **it is not sanitized** before being inserted.
+
+* Available in versions `>=0.0.3`
+* Defaults to `NULL`, no value
+
