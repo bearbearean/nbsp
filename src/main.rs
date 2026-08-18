@@ -85,7 +85,9 @@ pub async fn main() -> Result<()> {
             TraceLayer::new_for_http()
                 .make_span_with(CustomMakeSpan {})
                 .on_response(DefaultOnResponse::new().include_headers(true)),
-        );
+        )
+        // This has to come after the trace layer
+        .propagate_x_request_id();
 
     let router = Router::new()
         .route("/", routing::get(root))
