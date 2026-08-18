@@ -13,6 +13,9 @@ pub enum WebError {
     /// [`askama`] HTML rendering error
     #[error("failed to render HTML")]
     Askama(#[from] askama::Error),
+    /// Any custom internal server error
+    #[error("internal server error")]
+    InternalServerError(String),
 }
 
 /// Convenience wrapper for `Result<Response, WebError>`

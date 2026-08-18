@@ -4,7 +4,13 @@
 
 use std::net::SocketAddr;
 
-use axum::{Router, extract::State, http::HeaderMap, routing};
+use axum::{
+    Router,
+    extract::{Request, State},
+    http::HeaderMap,
+    response::Redirect,
+    routing,
+};
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -83,6 +89,7 @@ pub async fn main() -> Result<()> {
 
     let router = Router::new()
         .route("/", routing::get(root))
+        .route("/robots.txt", routing::get(permanent_redirects))
         .fallback(fallback_http_404)
         .layer(services)
         .nest("/assets", memory_serve::load!().into_router())
@@ -142,4 +149,21 @@ pub async fn fallback_http_404(
         },
         StatusCode::NOT_FOUND,
     )
+}
+
+/// A generic handler for any permanent redirects we may want
+pub async fn permanent_redirects(request: Request) -> WebResult {
+    let location = match request.uri().path() {
+        "/robots.txt" => "/assets/robots.txt",
+        _ => {
+            // In theory this branch of the match could never be triggered because all the routes
+            // that use this handler have to manually be added. So treat any other request we get
+            // here as an unimplemented branch.
+            return Err(WebError::InternalServerError(
+                "unimplemented permanent_redirects branch".to_string(),
+            ));
+        }
+    };
+
+    Ok((Redirect::permanent(location)).into_response())
 }
