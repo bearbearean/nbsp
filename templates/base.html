@@ -9,10 +9,16 @@
   <link rel="shortcut icon" href="/assets/nbsp-logo.png" type="image/png">
   <link rel="stylesheet" href="/assets/vendor/modern-normalize-3.0.1.css">
   <link rel="stylesheet" href="/assets/css/nbsp.css">
+
+  {#- Keep this as last in the head #}
+  {{ config.nbsp_html_head_extra|safe }}
 </head>
 
 <body>
   {% block body %}{% endblock %}
+
+  {#- Keep this as last in the body #}
+  {{ config.nbsp_html_body_extra|safe }}
 </body>
 
 </html>
