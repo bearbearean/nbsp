@@ -120,12 +120,7 @@ pub async fn root(
         config,
     }): State<GlobalState>,
 ) -> WebResult {
-    html(Homepage {
-        // TODO: Make this default info a struct that can be easily obtained from NbspConfig itself
-        nbsp_homepage_notice: config.nbsp_homepage_notice,
-        nbsp_community_title: config.nbsp_community_title,
-        nbsp_community_subtitle: config.nbsp_community_subtitle,
-    })
+    html(Homepage { config })
 }
 
 /// The fallback route when no other routes match (ie. HTTP 404)
@@ -143,8 +138,7 @@ pub async fn fallback_http_404(
 
     html_with_status(
         HttpStatusPage {
-            nbsp_community_title: config.nbsp_community_title,
-            nbsp_community_subtitle: config.nbsp_community_subtitle,
+            config,
             title: "Page not found - HTTP 404",
             description: "Whatever you're looking for, we can't seem to find it!",
             x_request_id,

@@ -3,12 +3,12 @@
 {% block body %}
 <header class="container page-header">
   <img class="logo" src="/assets/nbsp-logo.png" alt="nbsp">
-  <h1 class="title">{{ nbsp_community_title }}</h1>
-  <p class="subtitle">{{ nbsp_community_subtitle }}</p>
+  <h1 class="title">{{ config.nbsp_community_title }}</h1>
+  <p class="subtitle">{{ config.nbsp_community_subtitle }}</p>
 </header>
 
 <main class="container">
-  {% if let Some(notice) = nbsp_homepage_notice %}
+  {% if let Some(notice) = config.nbsp_homepage_notice %}
   <div class="homepage-notice">
     <p>{{ notice|safe }}</p>
   </div>
