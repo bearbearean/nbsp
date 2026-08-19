@@ -36,7 +36,7 @@ command = "podman"
 args = ["exec", "-it", "nbsp-postgresql", "psql", "-U", "nbsp", "${@}"]
 
 [tasks.create-migration]
-script = "touch migrations/$(date --iso-8601 | tr -d '-')_$(printf '%03d' $(ls migrations/*.up.sql | wc -l))_edit_me.{up,down}.sql"
+script = "touch migrations/$(date -u +'%Y%m%d%H%M%S')_$(printf '%03d' $(ls migrations/*.up.sql | wc -l))_edit_me.{up,down}.sql"
 
 [tasks.install-git-hooks]
 script = "cp .git-hooks/* .git/hooks/"
