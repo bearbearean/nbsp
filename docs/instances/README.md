@@ -4,4 +4,4 @@ If you're hosting an nbsp instance and wish to add it to this list, please [open
 
 | Link | Description | Host contact info |
 |------|-------------|-------------------|
-| [nbsp.party](https://nbsp.party) | Invite-only, general purpose instance. Hosted by bearbearean, creator of nbsp. | [contact@nbsp.party](mailto:contact@nbsp.party) |
+| [nbsp.party](https://nbsp.party?utm_campaign=instances) | Invite-only, general purpose instance. Hosted by bearbearean, creator of nbsp. | [contact@nbsp.party](mailto:contact@nbsp.party) |
