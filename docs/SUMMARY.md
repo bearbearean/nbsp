@@ -4,7 +4,7 @@
 
 * [Description]()
   * [Goals]()
-  * [Anti-goals]()
+  * [Anti-goals](./description/anti-goals/README.md)
   * [Features]()
 * [Administration](./administration/README.md)
   * [Deployment]()
