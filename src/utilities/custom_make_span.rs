@@ -16,9 +16,10 @@ impl<B> MakeSpan<B> for CustomMakeSpan {
             "remote-address" = tracing::field::Empty,
             "x-forwarded-for" = tracing::field::Empty,
             "x-request-id" = tracing::field::Empty,
+            "user-agent" = tracing::field::Empty,
         );
 
-        let headers = ["x-forwarded-for", "x-request-id"];
+        let headers = ["x-forwarded-for", "x-request-id", "user-agent"];
         for header in headers {
             if let Some(value) = request
                 .headers()
