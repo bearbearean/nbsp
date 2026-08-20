@@ -5,12 +5,14 @@
 use std::net::SocketAddr;
 
 use axum::{
-    Router,
-    extract::{Request, State},
+    Form, Router,
+    extract::{Query, Request, State},
     http::HeaderMap,
     response::Redirect,
     routing,
 };
+use serde::Deserialize;
+use sqlx::types::Uuid;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -27,10 +29,10 @@ pub mod templates;
 pub mod utilities;
 
 use crate::{
-    database::NbspConfig,
+    database::{Invite, NbspConfig, User},
     prelude::*,
-    templates::{Homepage, HttpStatusPage},
-    utilities::{CustomMakeSpan, html, html_with_status},
+    templates::{AccountRegister, Homepage, HttpStatusPage},
+    utilities::{CustomMakeSpan, hash_password, html, html_with_status},
 };
 
 /// The struct for [`axum::extract::State`] with all global state
@@ -91,6 +93,10 @@ pub async fn main() -> Result<()> {
 
     let router = Router::new()
         .route("/", routing::get(root))
+        .route(
+            "/account/register",
+            routing::get(account_register).post(do_account_register),
+        )
         .route("/robots.txt", routing::get(permanent_redirects))
         .fallback(fallback_http_404)
         .layer(services)
@@ -162,4 +168,91 @@ pub async fn permanent_redirects(request: Request) -> WebResult {
     };
 
     Ok((Redirect::permanent(location)).into_response())
+}
+
+/// Query parameters for `GET /account/register`
+#[derive(Deserialize)]
+pub struct AccountRegisterQueryParams {
+    /// An optional invite code to prefill in the account registration form
+    pub invite: Option<String>,
+}
+
+/// The GET handler for `/account/register`
+pub async fn account_register(
+    params: Query<AccountRegisterQueryParams>,
+    State(GlobalState {
+        pool: _pool,
+        config,
+    }): State<GlobalState>,
+) -> WebResult {
+    html(AccountRegister {
+        config,
+        prefilled_invite_code: params.0.invite,
+    })
+}
+
+/// Expected input form for `POST /account/register`
+#[derive(Deserialize)]
+pub struct AccountRegisterForm {
+    /// Value of the username form input
+    pub username: String,
+    /// Value of the password form input
+    pub password: String,
+    /// Value of the confirm_password form input
+    pub confirm_password: String,
+    /// Value of the invite form input
+    pub invite: String,
+}
+
+impl AccountRegisterForm {
+    /// Validate an account registration form input matches all the expected formats
+    pub fn validate(&self) -> bool {
+        self.password == self.confirm_password
+            && User::validate_username(&self.username)
+            && User::validate_password(&self.password)
+            && Invite::validate_invite(&self.invite)
+    }
+}
+
+/// The POST handler for `/account/register`
+pub async fn do_account_register(
+    State(GlobalState { pool, config }): State<GlobalState>,
+    Form(form): Form<AccountRegisterForm>,
+) -> WebResult {
+    let err_status = StatusCode::UNPROCESSABLE_ENTITY;
+    let template = AccountRegister {
+        config,
+        prefilled_invite_code: Some(form.invite.clone()),
+    };
+
+    let invite = match Uuid::try_parse(&form.invite) {
+        Ok(invite) => invite,
+        Err(_) => return html_with_status(template, err_status),
+    };
+
+    let form_is_valid = form.validate();
+    if !form_is_valid {
+        tracing::info!("attempted user registration with invalid form details");
+        return html_with_status(template, err_status);
+    }
+
+    let username_is_available = User::is_username_available(&form.username, &pool).await?;
+    if !username_is_available {
+        tracing::info!("attempted user registration with existing username");
+        return html_with_status(template, err_status);
+    }
+
+    let invite_is_available = Invite::is_invite_available(&invite, &pool).await?;
+    if !invite_is_available {
+        tracing::info!("attempted user registration with unavailable invite code");
+        return html_with_status(template, err_status);
+    }
+
+    if form_is_valid && username_is_available && invite_is_available {
+        let password_hash = hash_password(form.password.as_bytes())?;
+        let user = User::register_account(&form.username, &password_hash, &invite, &pool).await?;
+        Ok(Redirect::to(&format!("/user/{}", user.username)).into_response())
+    } else {
+        html_with_status(template, err_status)
+    }
 }

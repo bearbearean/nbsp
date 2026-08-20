@@ -2,7 +2,7 @@
 
 use askama::Template;
 
-use crate::database::NbspConfig;
+use crate::database::{NbspConfig, User};
 
 /// The homepage template
 #[derive(Template)]
@@ -24,4 +24,14 @@ pub struct HttpStatusPage<'a> {
     pub description: &'a str,
     /// The x-request-id HTTP header, in case further investigation is needed
     pub x_request_id: &'a str,
+}
+
+/// The account registration template
+#[derive(Template)]
+#[template(path = "pages/register.html")]
+pub struct AccountRegister {
+    /// The [`NbspConfig`] for the instance
+    pub config: NbspConfig,
+    /// An invite code to prefill in the invite input
+    pub prefilled_invite_code: Option<String>,
 }

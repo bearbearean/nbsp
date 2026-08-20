@@ -53,6 +53,15 @@ body {
   background-color: #ffc10711;
   border: 1px solid #ffc107;
   border-radius: 4px;
+  margin-bottom: 10px;
+  padding: 10px;
+}
+
+.register-an-account {
+  background-color: #c1ff0711;
+  border: 1px solid #c1ff07;
+  border-radius: 4px;
+  font-weight: bold;
   padding: 10px;
 }
 
@@ -76,5 +85,77 @@ body {
         text-decoration: underline;
       }
     }
+  }
+}
+
+.form {
+  background-color: #262626;
+  border-radius: 4px;
+  box-shadow: 0 0 4px 0px #000000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+
+  .label-input {
+    .label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+
+    .input {
+      background: #202020;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      box-shadow: 0 0 4px 0px #000000;
+      color: #ffffff;
+      display: block;
+      max-width: 400px;
+      padding: 4px;
+      width: 100%;
+
+      &:focus {
+        outline: 2px dashed #07a1ff;
+        outline-offset: 2px;
+      }
+
+      &:valid {
+        border-color: #81ff07bb;
+      }
+
+      &:invalid {
+        border-color: #ff4107bb;
+      }
+    }
+  }
+
+  .label-input:has(.input:required) .label::after {
+    color: #ff6127;
+    content: '*';
+  }
+
+  .submit {
+    background-color: #c1ff0711;
+    border: 1px solid #c1ff07;
+    border-radius: 4px;
+    color: #ffffff;
+    cursor: pointer;
+    font-weight: bold;
+    padding: 4px 10px;
+
+    &:hover {
+      background-color: #c1ff0722;
+    }
+  }
+}
+
+.register-requirements {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .list {
+    margin-left: 1.6rem;
   }
 }

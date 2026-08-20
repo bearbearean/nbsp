@@ -5,9 +5,13 @@ use std::time::Duration;
 use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 
 mod config;
+mod invite;
+mod user;
 
 pub use crate::prelude::*;
 pub use config::NbspConfig;
+pub use invite::Invite;
+pub use user::User;
 
 /// Create the [`sqlx::PgPool`] and run the database migrations.
 pub async fn initialize() -> Result<PgPool> {

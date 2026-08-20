@@ -13,6 +13,12 @@ pub enum WebError {
     /// [`askama`] HTML rendering error
     #[error("failed to render HTML")]
     Askama(#[from] askama::Error),
+    /// [`sqlx`] database errors
+    #[error("database error")]
+    Sqlx(#[from] sqlx::Error),
+    /// Error when hashing a password with [`argon2`]
+    #[error("password hashing error")]
+    PasswordHashing(#[from] argon2::password_hash::Error),
     /// Any custom internal server error
     #[error("internal server error")]
     InternalServerError(String),

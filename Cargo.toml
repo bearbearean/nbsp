@@ -12,10 +12,14 @@ clippy.missing_docs_in_private_items = "warn"
 
 [dependencies]
 anyhow = "1.0.104"
+argon2 = { version = "0.5.3", features = ["std"] }
 askama = "0.16.0"
 axum = "0.8.9"
+chrono = "0.4.45"
 memory-serve = "2.3.0"
-sqlx = { version = "0.9.0", features = ["runtime-tokio", "postgres"] }
+regex = "1.13.1"
+serde = { version = "1.0.229", features = ["derive"] }
+sqlx = { version = "0.9.0", features = ["runtime-tokio", "postgres", "chrono", "uuid"] }
 thiserror = "2.0.20"
 tokio = { version = "1.53.1", features = ["full"] }
 tower = "0.5.3"
