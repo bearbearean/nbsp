@@ -25,13 +25,13 @@ pub struct User {
 
 impl User {
     /// The allowed range of username length: at least 3 and at most 40 characters
-    pub const USERNAME_LENGTH: RangeInclusive<usize> = 3..=40;
+    pub const USERNAME_LENGTH: RangeInclusive<usize> = 3..=40; // Do not modify this length!
     /// The allowed username regular expression
     #[allow(clippy::declare_interior_mutable_const)]
     pub const USERNAME_REGEX: LazyLock<Regex> =
         LazyLock::new(|| Regex::new("^[a-zA-Z0-9][a-zA-Z0-9_]+[a-zA-Z0-9]$").unwrap());
     /// The allowed range of password length: at least 10 and at most 200 characters
-    pub const PASSWORD_LENGTH: RangeInclusive<usize> = 10..=200;
+    pub const PASSWORD_LENGTH: RangeInclusive<usize> = 10..=200; // Do not modify this length!
     /// A list of regular expressions that specifies the allowed characters in a password
     #[allow(clippy::declare_interior_mutable_const)]
     pub const PASSWORD_REGEXES: LazyLock<Vec<Regex>> = LazyLock::new(|| {
