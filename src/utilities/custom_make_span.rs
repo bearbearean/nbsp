@@ -9,7 +9,7 @@ pub struct CustomMakeSpan {}
 impl<B> MakeSpan<B> for CustomMakeSpan {
     fn make_span(&mut self, request: &axum::http::Request<B>) -> tracing::Span {
         let span = tracing::span!(
-            tracing::Level::DEBUG,
+            tracing::Level::INFO,
             "request",
             method = %request.method(),
             uri = %request.uri(),
