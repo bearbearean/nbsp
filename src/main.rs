@@ -34,10 +34,12 @@ pub mod utilities;
 
 use crate::{
     auth::{auth_base, auth_required, generate_jwt},
-    database::{Invite, NbspConfig, User},
+    database::{Invite, NbspConfig, RefreshToken, User},
     prelude::*,
-    templates::{AccountRegister, Homepage, HttpStatusPage},
-    utilities::{CustomMakeSpan, build_cookie, hash_password, html, html_with_status},
+    templates::{AccountLogin, AccountRegister, Homepage, HttpStatusPage},
+    utilities::{
+        CustomMakeSpan, build_cookie, hash_password, html, html_with_status, verify_password,
+    },
 };
 
 /// The struct for [`axum::extract::State`] with all global state
@@ -116,10 +118,16 @@ pub async fn main() -> Result<()> {
             auth_required,
         ));
 
-    let router_with_optional_auth = Router::new().route("/", routing::get(root)).route(
-        "/account/register",
-        routing::get(account_register).post(do_account_register),
-    );
+    let router_with_optional_auth = Router::new()
+        .route("/", routing::get(root))
+        .route(
+            "/account/register",
+            routing::get(account_register).post(do_account_register),
+        )
+        .route(
+            "/account/login",
+            routing::get(account_login).post(do_account_login),
+        );
 
     let router = Router::new()
         .merge(router_with_optional_auth)
@@ -293,4 +301,58 @@ impl FromRef<GlobalState> for Key {
     fn from_ref(gs: &GlobalState) -> Self {
         gs.cookies_key.clone()
     }
+}
+
+/// The GET handler for `/account/login`
+pub async fn account_login(State(gs): State<GlobalState>) -> WebResult {
+    html(AccountLogin { config: gs.config })
+}
+
+/// Expected input form for `POST /account/login`
+#[derive(Deserialize)]
+pub struct AccountLoginForm {
+    /// Value of the username form input
+    pub username: String,
+    /// Value of the password form input
+    pub password: String,
+}
+
+/// The POST handler for `/account/login`
+pub async fn do_account_login(
+    State(gs): State<GlobalState>,
+    jar: PrivateCookieJar,
+    Form(form): Form<AccountLoginForm>,
+) -> WebResult {
+    let mut txn = gs.pool.begin().await?;
+    let err_template =
+        html_with_status(AccountLogin { config: gs.config }, StatusCode::UNAUTHORIZED);
+
+    let user = match User::optional_find_by_username(&form.username, &gs.pool).await? {
+        Some(user) => user,
+        None => {
+            return err_template;
+        }
+    };
+
+    if !verify_password(form.password.as_bytes(), user.password_hash.as_deref())? {
+        return err_template;
+    }
+
+    let jwt = generate_jwt(&gs.jwt_encoding_key, user.user_id).map_err(WebError::Jwt)?;
+    let jwt_cookie = build_cookie("jwt", jwt, Some(Duration::hours(1)));
+
+    let refresh_token = RefreshToken::new_for_user(user.user_id, &mut txn).await?;
+    let refresh_cookie = build_cookie(
+        "refresh",
+        refresh_token.refresh_token.to_string(),
+        Some(Duration::days(30)),
+    );
+
+    txn.commit().await?;
+
+    Ok((
+        jar.add(jwt_cookie).add(refresh_cookie),
+        Redirect::to(&format!("/user/{}", user.username)),
+    )
+        .into_response())
 }

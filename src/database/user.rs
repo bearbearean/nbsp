@@ -119,6 +119,18 @@ impl User {
             .fetch_optional(pool)
             .await
     }
+
+    /// Find a user by their `username`, returning `None` if they cannot be found
+    pub async fn optional_find_by_username(
+        username: &str,
+        pool: &PgPool,
+    ) -> sqlx::Result<Option<Self>> {
+        let query = "SELECT * FROM users WHERE lower(username) = lower($1);";
+        sqlx::query_as(query)
+            .bind(username)
+            .fetch_optional(pool)
+            .await
+    }
 }
 
 #[cfg(test)]

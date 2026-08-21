@@ -35,3 +35,11 @@ pub struct AccountRegister {
     /// An invite code to prefill in the invite input
     pub prefilled_invite_code: Option<String>,
 }
+
+/// The account login template
+#[derive(Template)]
+#[template(path = "pages/login.html")]
+pub struct AccountLogin {
+    /// The [`NbspConfig`] for the instance
+    pub config: NbspConfig,
+}

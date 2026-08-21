@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block body %}
+<header class="container page-header">
+  <img class="logo" src="/assets/nbsp-logo.png" alt="nbsp">
+  <h1 class="title">{{ config.nbsp_community_title }}</h1>
+  <p class="subtitle">{{ config.nbsp_community_subtitle }}</p>
+</header>
+
+<main class="container">
+  <form action="/account/login" method="post" class="form">
+    <h2>Log in to your account</h2>
+
+    <div class="label-input">
+      <label class="label" for="username">Username</label>
+      <input class="input" type="text" name="username" id="username"
+        minlength="{{ User::USERNAME_LENGTH.start() }}"
+        maxlength="{{ User::USERNAME_LENGTH.end() }}"
+        required>
+    </div>
+
+    <div class="label-input">
+      <label class="label" for="password">Password</label>
+      <input class="input" type="password" name="password" id="password"
+        minlength="{{ User::PASSWORD_LENGTH.start() }}"
+        maxlength="{{ User::PASSWORD_LENGTH.end() }}"
+        required>
+    </div>
+
+    <div>
+      <button class="submit" type="submit">Log in</button>
+    </div>
+  </form>
+</main>
+{% endblock %}
