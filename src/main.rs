@@ -6,11 +6,14 @@ use std::net::SocketAddr;
 
 use axum::{
     Form, Router,
-    extract::{Query, Request, State},
+    extract::{FromRef, Query, Request, State},
     http::HeaderMap,
     response::Redirect,
     routing,
 };
+use axum_extra::extract::{PrivateCookieJar, cookie::Key};
+use cookie::time::Duration;
+use jsonwebtoken::{DecodingKey, EncodingKey};
 use serde::Deserialize;
 use sqlx::types::Uuid;
 use tokio::net::TcpListener;
@@ -23,16 +26,18 @@ use tower_http::{
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
+pub mod auth;
 pub mod database;
 pub mod prelude;
 pub mod templates;
 pub mod utilities;
 
 use crate::{
+    auth::{auth_base, auth_required, generate_jwt},
     database::{Invite, NbspConfig, User},
     prelude::*,
     templates::{AccountRegister, Homepage, HttpStatusPage},
-    utilities::{CustomMakeSpan, hash_password, html, html_with_status},
+    utilities::{CustomMakeSpan, build_cookie, hash_password, html, html_with_status},
 };
 
 /// The struct for [`axum::extract::State`] with all global state
@@ -42,6 +47,12 @@ pub struct GlobalState {
     pub pool: PgPool,
     /// Global configuration data used in many places
     pub config: NbspConfig,
+    /// The key to encrypt private cookies with
+    pub cookies_key: Key,
+    /// The key to encode JWTs with
+    pub jwt_encoding_key: EncodingKey,
+    /// The key to decode JWTs with
+    pub jwt_decoding_key: DecodingKey,
 }
 
 /// The main function for nbsp.
@@ -70,12 +81,19 @@ pub async fn main() -> Result<()> {
     let pool = crate::database::initialize()
         .await
         .context("failed to connect to PostgreSQL, check the NBSP_PG_... environment variables")?;
+    let config = NbspConfig::load(&pool)
+        .await
+        .context("failed to load NbspConfig, check the nbsp_config table in PostgreSQL")?;
+    let cookies_key = config.nbsp_cookies_key.clone();
+    let jwt_encoding_key = EncodingKey::from_secret(config.nbsp_jwt_signing_key.as_bytes());
+    let jwt_decoding_key = DecodingKey::from_secret(config.nbsp_jwt_signing_key.as_bytes());
 
     let global_state = GlobalState {
         pool: pool.clone(),
-        config: NbspConfig::load(&pool)
-            .await
-            .context("failed to load NbspConfig, check the nbsp_config table in PostgreSQL")?,
+        config,
+        cookies_key,
+        jwt_encoding_key,
+        jwt_decoding_key,
     };
 
     // Set up the tower and axum middlewares/services
@@ -91,15 +109,28 @@ pub async fn main() -> Result<()> {
         // This has to come after the trace layer
         .propagate_x_request_id();
 
+    let router_with_auth = Router::new()
+        .route("/auth-test", routing::get(async || "authed!"))
+        .layer(axum::middleware::from_fn_with_state(
+            global_state.clone(),
+            auth_required,
+        ));
+
+    let router_with_optional_auth = Router::new().route("/", routing::get(root)).route(
+        "/account/register",
+        routing::get(account_register).post(do_account_register),
+    );
+
     let router = Router::new()
-        .route("/", routing::get(root))
-        .route(
-            "/account/register",
-            routing::get(account_register).post(do_account_register),
-        )
+        .merge(router_with_optional_auth)
+        .merge(router_with_auth)
         .route("/robots.txt", routing::get(permanent_redirects))
         .fallback(fallback_http_404)
         .layer(services)
+        .layer(axum::middleware::from_fn_with_state(
+            global_state.clone(),
+            auth_base,
+        ))
         .nest("/assets", memory_serve::load!().into_router())
         .with_state(global_state);
 
@@ -120,23 +151,12 @@ pub async fn main() -> Result<()> {
 }
 
 /// The route for `GET /` (the home page)
-pub async fn root(
-    State(GlobalState {
-        pool: _pool,
-        config,
-    }): State<GlobalState>,
-) -> WebResult {
-    html(Homepage { config })
+pub async fn root(State(gs): State<GlobalState>) -> WebResult {
+    html(Homepage { config: gs.config })
 }
 
 /// The fallback route when no other routes match (ie. HTTP 404)
-pub async fn fallback_http_404(
-    headers: HeaderMap,
-    State(GlobalState {
-        pool: _pool,
-        config,
-    }): State<GlobalState>,
-) -> WebResult {
+pub async fn fallback_http_404(headers: HeaderMap, State(gs): State<GlobalState>) -> WebResult {
     let x_request_id = headers
         .get("x-request-id")
         .and_then(|value| value.to_str().ok())
@@ -144,7 +164,7 @@ pub async fn fallback_http_404(
 
     html_with_status(
         HttpStatusPage {
-            config,
+            config: gs.config,
             title: "Page not found - HTTP 404",
             description: "Whatever you're looking for, we can't seem to find it!",
             x_request_id,
@@ -180,13 +200,10 @@ pub struct AccountRegisterQueryParams {
 /// The GET handler for `/account/register`
 pub async fn account_register(
     params: Query<AccountRegisterQueryParams>,
-    State(GlobalState {
-        pool: _pool,
-        config,
-    }): State<GlobalState>,
+    State(gs): State<GlobalState>,
 ) -> WebResult {
     html(AccountRegister {
-        config,
+        config: gs.config,
         prefilled_invite_code: params.0.invite,
     })
 }
@@ -216,12 +233,13 @@ impl AccountRegisterForm {
 
 /// The POST handler for `/account/register`
 pub async fn do_account_register(
-    State(GlobalState { pool, config }): State<GlobalState>,
+    State(gs): State<GlobalState>,
+    jar: PrivateCookieJar,
     Form(form): Form<AccountRegisterForm>,
 ) -> WebResult {
     let err_status = StatusCode::UNPROCESSABLE_ENTITY;
     let template = AccountRegister {
-        config,
+        config: gs.config,
         prefilled_invite_code: Some(form.invite.clone()),
     };
 
@@ -236,13 +254,13 @@ pub async fn do_account_register(
         return html_with_status(template, err_status);
     }
 
-    let username_is_available = User::is_username_available(&form.username, &pool).await?;
+    let username_is_available = User::is_username_available(&form.username, &gs.pool).await?;
     if !username_is_available {
         tracing::info!("attempted user registration with existing username");
         return html_with_status(template, err_status);
     }
 
-    let invite_is_available = Invite::is_invite_available(&invite, &pool).await?;
+    let invite_is_available = Invite::is_invite_available(&invite, &gs.pool).await?;
     if !invite_is_available {
         tracing::info!("attempted user registration with unavailable invite code");
         return html_with_status(template, err_status);
@@ -250,9 +268,29 @@ pub async fn do_account_register(
 
     if form_is_valid && username_is_available && invite_is_available {
         let password_hash = hash_password(form.password.as_bytes())?;
-        let user = User::register_account(&form.username, &password_hash, &invite, &pool).await?;
-        Ok(Redirect::to(&format!("/user/{}", user.username)).into_response())
+        let (user, refresh_token) =
+            User::register_account(&form.username, &password_hash, &invite, &gs.pool).await?;
+        let jwt = generate_jwt(&gs.jwt_encoding_key, user.user_id)?;
+        let jwt_cookie = build_cookie("jwt", jwt, Some(Duration::hours(1)));
+        let refresh_cookie = build_cookie(
+            "refresh",
+            refresh_token.refresh_token.to_string(),
+            Some(Duration::days(30)),
+        );
+
+        Ok((
+            jar.add(jwt_cookie).add(refresh_cookie),
+            Redirect::to(&format!("/user/{}", user.username)),
+        )
+            .into_response())
     } else {
         html_with_status(template, err_status)
+    }
+}
+
+// Tell `PrivateCookieJar` how to access the cookies encryption key from `GlobalState`
+impl FromRef<GlobalState> for Key {
+    fn from_ref(gs: &GlobalState) -> Self {
+        gs.cookies_key.clone()
     }
 }

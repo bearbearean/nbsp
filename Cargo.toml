@@ -14,8 +14,12 @@ clippy.missing_docs_in_private_items = "warn"
 anyhow = "1.0.104"
 argon2 = { version = "0.5.3", features = ["std"] }
 askama = "0.16.0"
-axum = "0.8.9"
+axum = { version = "0.8.9", features = ["macros"] }
+axum-extra = { version = "0.12.6", features = ["cookie", "cookie-private"] }
+base64ct = "1.8.3"
 chrono = "0.4.45"
+cookie = "0.18.2"
+jsonwebtoken = { version = "11.0.0", features = ["rust_crypto"] }
 memory-serve = "2.3.0"
 regex = "1.13.1"
 serde = { version = "1.0.229", features = ["derive"] }

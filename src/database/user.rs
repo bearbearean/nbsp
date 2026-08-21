@@ -6,10 +6,10 @@ use chrono::{DateTime, Utc};
 use regex::Regex;
 use sqlx::{PgPool, prelude::FromRow, types::Uuid};
 
-use crate::database::Invite;
+use crate::database::{Invite, RefreshToken};
 
 /// A nbsp user account
-#[derive(FromRow)]
+#[derive(Clone, FromRow)]
 pub struct User {
     /// The ID of the user (primary key)
     pub user_id: i64,
@@ -86,7 +86,7 @@ impl User {
         password_hash: &str,
         invite: &Uuid,
         pool: &PgPool,
-    ) -> sqlx::Result<Self> {
+    ) -> sqlx::Result<(Self, RefreshToken)> {
         let mut txn = pool.begin().await?;
         let query = "INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING *;";
         let user = sqlx::query_as::<_, Self>(query)
@@ -99,8 +99,25 @@ impl User {
         assert_eq!(invite.user_consumer_id, Some(user.user_id));
         assert!(invite.consumed_at.is_some());
 
+        let refresh_token = RefreshToken::new_for_user(user.user_id, &mut txn).await?;
+
         txn.commit().await?;
-        Ok(user)
+        Ok((user, refresh_token))
+    }
+
+    /// Find a user by their `user_id`, returning an `Err` if they cannot be found
+    pub async fn find_by_id(user_id: i64, pool: &PgPool) -> sqlx::Result<Self> {
+        let query = "SELECT * FROM users WHERE user_id = $1;";
+        sqlx::query_as(query).bind(user_id).fetch_one(pool).await
+    }
+
+    /// Find a user by their `user_id`, returning `None` if they cannot be found
+    pub async fn optional_find_by_id(user_id: i64, pool: &PgPool) -> sqlx::Result<Option<Self>> {
+        let query = "SELECT * FROM users WHERE user_id = $1;";
+        sqlx::query_as(query)
+            .bind(user_id)
+            .fetch_optional(pool)
+            .await
     }
 }
 

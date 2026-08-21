@@ -6,11 +6,13 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 
 mod config;
 mod invite;
+mod refresh_token;
 mod user;
 
 pub use crate::prelude::*;
 pub use config::NbspConfig;
 pub use invite::Invite;
+pub use refresh_token::RefreshToken;
 pub use user::User;
 
 /// Create the [`sqlx::PgPool`] and run the database migrations.

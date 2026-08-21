@@ -7,12 +7,14 @@ ol, ul, li, p, h1, h2, h3, h4, h5 {margin:0;padding:0;}
 /* - */
 
 a {
-  color: #19f754;
+  color: var(--link-color, #19f754);
 }
 
 body {
   background-color: #2c2c2c;
   color: #ffffff;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .container {
@@ -57,12 +59,37 @@ body {
   padding: 10px;
 }
 
-.register-an-account {
-  background-color: #c1ff0711;
-  border: 1px solid #c1ff07;
+.two-col-wrapper {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(var(--columns, 2), 1fr);
+
+  @media (max-width: 1000px) {
+    --columns: 1;
+  }
+}
+
+.register-an-account,
+.login-existing-account {
+  background-color: var(--background-color);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  font-weight: bold;
   padding: 10px;
+
+  p {
+    font-weight: bold;
+  }
+}
+
+.register-an-account {
+  --background-color: #c1ff0711;
+  --border-color: #c1ff07;
+}
+
+.login-existing-account {
+  --background-color: #c107ff11;
+  --border-color: #c107ff;
+  --link-color: #f167ff;
 }
 
 .page-footer {
