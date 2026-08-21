@@ -2,7 +2,7 @@
 //!
 //! > non-breaking space: a thoughtful community forum platform
 
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     Form, Router,
@@ -21,6 +21,7 @@ use tower::ServiceBuilder;
 use tower_http::{
     ServiceBuilderExt,
     request_id::MakeRequestUuid,
+    sensitive_headers::{SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer},
     trace::{DefaultOnResponse, TraceLayer},
 };
 use tracing::level_filters::LevelFilter;
@@ -98,16 +99,29 @@ pub async fn main() -> Result<()> {
         jwt_decoding_key,
     };
 
+    let sensitive_headers: Arc<[_]> = {
+        use axum::http::header::*;
+        Arc::new([AUTHORIZATION, PROXY_AUTHORIZATION, COOKIE, SET_COOKIE])
+    };
+
     // Set up the tower and axum middlewares/services
     let services = ServiceBuilder::new()
         // Add an x-request-id HTTP header to every request to group all logs together for that request
         .set_x_request_id(MakeRequestUuid {})
+        // The sensitive request headers layer must come *before* the trace layer
+        .layer(SetSensitiveRequestHeadersLayer::from_shared(Arc::clone(
+            &sensitive_headers,
+        )))
         // Set up tracing using our CustomMakeSpan and include headers on the response trace
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(CustomMakeSpan {})
                 .on_response(DefaultOnResponse::new().include_headers(true)),
         )
+        // The sensitive response headers layer must come *after* the trace layer
+        .layer(SetSensitiveResponseHeadersLayer::from_shared(
+            sensitive_headers,
+        ))
         // This has to come after the trace layer
         .propagate_x_request_id();
 
@@ -134,11 +148,11 @@ pub async fn main() -> Result<()> {
         .merge(router_with_auth)
         .route("/robots.txt", routing::get(permanent_redirects))
         .fallback(fallback_http_404)
-        .layer(services)
         .layer(axum::middleware::from_fn_with_state(
             global_state.clone(),
             auth_base,
         ))
+        .layer(services)
         .nest("/assets", memory_serve::load!().into_router())
         .with_state(global_state);
 
