@@ -14,7 +14,7 @@
   {{ config.nbsp_html_head_extra|safe }}
 </head>
 
-<body>
+<body {% block body_attr %}{% endblock %}>
   {% block body %}{% endblock %}
 
   <footer class="container page-footer">
