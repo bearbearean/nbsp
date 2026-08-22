@@ -5,7 +5,7 @@
 use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
-    Form, Router,
+    Extension, Form, Router,
     extract::{FromRef, Query, Request, State},
     http::HeaderMap,
     response::Redirect,
@@ -35,7 +35,7 @@ pub mod templates;
 pub mod utilities;
 
 use crate::{
-    auth::{auth_base, auth_not_allowed, auth_required, generate_jwt},
+    auth::{Auth, auth_base, auth_not_allowed, auth_required, generate_jwt},
     database::{Invite, NbspConfig, RefreshToken, User},
     prelude::*,
     templates::{AccountLogin, AccountRegister, Homepage, HttpStatusPage},
@@ -187,8 +187,11 @@ pub async fn main() -> Result<()> {
 }
 
 /// The route for `GET /` (the home page)
-pub async fn root(State(gs): State<GlobalState>) -> WebResult {
-    html(Homepage { config: gs.config })
+pub async fn root(State(gs): State<GlobalState>, Extension(auth): Extension<Auth>) -> WebResult {
+    html(Homepage {
+        config: gs.config,
+        auth,
+    })
 }
 
 /// The fallback route when no other routes match (ie. HTTP 404)

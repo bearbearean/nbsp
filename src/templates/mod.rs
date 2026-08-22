@@ -2,7 +2,10 @@
 
 use askama::Template;
 
-use crate::database::{NbspConfig, User};
+use crate::{
+    auth::Auth,
+    database::{NbspConfig, User},
+};
 
 /// The homepage template
 #[derive(Template)]
@@ -10,6 +13,8 @@ use crate::database::{NbspConfig, User};
 pub struct Homepage {
     /// The [`NbspConfig`] for the instance
     pub config: NbspConfig,
+    /// The authentication context
+    pub auth: Auth,
 }
 
 /// A generic template for HTTP status codes
