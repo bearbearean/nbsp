@@ -148,3 +148,20 @@ pub async fn auth_required(
         Redirect::to(&redirect_url).into_response()
     }
 }
+
+/// Middleware to require that the user is *not* authenticated. Authenticated requests will be
+/// redirected to the home page.
+///
+/// This is useful for the registration and login pages, where if a user is already logged in they
+/// don't need to be able to register or login again. They should log out first
+pub async fn auth_not_allowed(
+    Extension(auth): Extension<Auth>,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    if auth.user.is_none() {
+        next.run(request).await
+    } else {
+        Redirect::to("/").into_response()
+    }
+}

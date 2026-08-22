@@ -34,7 +34,7 @@ pub mod templates;
 pub mod utilities;
 
 use crate::{
-    auth::{auth_base, auth_required, generate_jwt},
+    auth::{auth_base, auth_not_allowed, auth_required, generate_jwt},
     database::{Invite, NbspConfig, RefreshToken, User},
     prelude::*,
     templates::{AccountLogin, AccountRegister, Homepage, HttpStatusPage},
@@ -132,8 +132,7 @@ pub async fn main() -> Result<()> {
             auth_required,
         ));
 
-    let router_with_optional_auth = Router::new()
-        .route("/", routing::get(root))
+    let router_without_auth = Router::new()
         .route(
             "/account/register",
             routing::get(account_register).post(do_account_register),
@@ -141,11 +140,18 @@ pub async fn main() -> Result<()> {
         .route(
             "/account/login",
             routing::get(account_login).post(do_account_login),
-        );
+        )
+        .layer(axum::middleware::from_fn_with_state(
+            global_state.clone(),
+            auth_not_allowed,
+        ));
+
+    let router_with_optional_auth = Router::new().route("/", routing::get(root));
 
     let router = Router::new()
         .merge(router_with_optional_auth)
         .merge(router_with_auth)
+        .merge(router_without_auth)
         .route("/robots.txt", routing::get(permanent_redirects))
         .fallback(fallback_http_404)
         .layer(axum::middleware::from_fn_with_state(
