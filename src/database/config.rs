@@ -37,6 +37,9 @@ pub struct NbspConfig {
 
     /// The JWT signing key for encoding and decoding JWTs with, encoded with base64
     pub nbsp_jwt_signing_key: String,
+
+    /// The content security policy header to set on every response
+    pub nbsp_content_security_policy: String,
 }
 
 impl NbspConfig {
@@ -56,6 +59,7 @@ impl NbspConfig {
             nbsp_html_body_extra: String::new(),
             nbsp_cookies_key: Key::generate(),
             nbsp_jwt_signing_key: String::new(),
+            nbsp_content_security_policy: String::new(),
         };
 
         let mut save_generated_cookies_key = true;
@@ -107,6 +111,12 @@ impl NbspConfig {
                 && let Some(value) = value
             {
                 config.nbsp_jwt_signing_key = value.clone();
+            }
+
+            if key == "nbsp_content_security_policy"
+                && let Some(value) = value
+            {
+                config.nbsp_content_security_policy = value.clone();
             }
         }
 

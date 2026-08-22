@@ -22,6 +22,7 @@ use tower_http::{
     ServiceBuilderExt,
     request_id::MakeRequestUuid,
     sensitive_headers::{SetSensitiveRequestHeadersLayer, SetSensitiveResponseHeadersLayer},
+    set_header::SetResponseHeaderLayer,
     trace::{DefaultOnResponse, TraceLayer},
 };
 use tracing::level_filters::LevelFilter;
@@ -90,6 +91,7 @@ pub async fn main() -> Result<()> {
     let cookies_key = config.nbsp_cookies_key.clone();
     let jwt_encoding_key = EncodingKey::from_secret(config.nbsp_jwt_signing_key.as_bytes());
     let jwt_decoding_key = DecodingKey::from_secret(config.nbsp_jwt_signing_key.as_bytes());
+    let content_security_policy = config.nbsp_content_security_policy.clone();
 
     let global_state = GlobalState {
         pool: pool.clone(),
@@ -123,7 +125,13 @@ pub async fn main() -> Result<()> {
             sensitive_headers,
         ))
         // This has to come after the trace layer
-        .propagate_x_request_id();
+        .propagate_x_request_id()
+        // Set the content-security-policy header on every response
+        .layer(SetResponseHeaderLayer::overriding(
+            axum::http::header::CONTENT_SECURITY_POLICY,
+            axum::http::HeaderValue::try_from(content_security_policy)
+                .expect("nbsp_content_security_policy is not a valid HeaderValue"),
+        ));
 
     let router_with_auth = Router::new()
         .route("/auth-test", routing::get(async || "authed!"))
