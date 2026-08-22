@@ -317,6 +317,13 @@ impl FromRef<GlobalState> for Key {
     }
 }
 
+/// Query parameters for `/account/login`
+#[derive(Deserialize)]
+pub struct AccountLoginQueryParams {
+    /// An optional URL to redirect back to after the login is done
+    pub redirect: Option<String>,
+}
+
 /// The GET handler for `/account/login`
 pub async fn account_login(State(gs): State<GlobalState>) -> WebResult {
     html(AccountLogin { config: gs.config })
@@ -334,6 +341,7 @@ pub struct AccountLoginForm {
 /// The POST handler for `/account/login`
 pub async fn do_account_login(
     State(gs): State<GlobalState>,
+    Query(params): Query<AccountLoginQueryParams>,
     jar: PrivateCookieJar,
     Form(form): Form<AccountLoginForm>,
 ) -> WebResult {
@@ -364,9 +372,14 @@ pub async fn do_account_login(
 
     txn.commit().await?;
 
+    let redirect_url = match params.redirect {
+        Some(redirect) => redirect,
+        None => format!("/user/{}", user.username),
+    };
+
     Ok((
         jar.add(jwt_cookie).add(refresh_cookie),
-        Redirect::to(&format!("/user/{}", user.username)),
+        Redirect::to(&redirect_url),
     )
         .into_response())
 }
