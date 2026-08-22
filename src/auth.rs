@@ -144,7 +144,10 @@ pub async fn auth_required(
     if auth.user.is_some() {
         next.run(request).await
     } else {
-        let redirect_url = format!("/account/login?redirect={}", request.uri());
+        let request_uri = request.uri().to_string();
+        let request_uri =
+            percent_encoding::utf8_percent_encode(&request_uri, percent_encoding::NON_ALPHANUMERIC);
+        let redirect_url = format!("/account/login?redirect={}", request_uri);
         Redirect::to(&redirect_url).into_response()
     }
 }

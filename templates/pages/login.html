@@ -8,7 +8,7 @@
 </header>
 
 <main class="container">
-  <form action="/account/login" method="post" class="form">
+  <form action="/account/login{% if let Some(redirect) = redirect %}?redirect={{ redirect|urlencode }}{% endif %}" method="post" class="form">
     <h2>Log in to your account</h2>
 
     <div class="label-input">

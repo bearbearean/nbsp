@@ -42,4 +42,6 @@ pub struct AccountRegister {
 pub struct AccountLogin {
     /// The [`NbspConfig`] for the instance
     pub config: NbspConfig,
+    /// The URL to redirect back to after login
+    pub redirect: Option<String>,
 }

@@ -339,8 +339,14 @@ pub struct AccountLoginQueryParams {
 }
 
 /// The GET handler for `/account/login`
-pub async fn account_login(State(gs): State<GlobalState>) -> WebResult {
-    html(AccountLogin { config: gs.config })
+pub async fn account_login(
+    State(gs): State<GlobalState>,
+    Query(params): Query<AccountLoginQueryParams>,
+) -> WebResult {
+    html(AccountLogin {
+        config: gs.config,
+        redirect: params.redirect,
+    })
 }
 
 /// Expected input form for `POST /account/login`
@@ -360,8 +366,13 @@ pub async fn do_account_login(
     Form(form): Form<AccountLoginForm>,
 ) -> WebResult {
     let mut txn = gs.pool.begin().await?;
-    let err_template =
-        html_with_status(AccountLogin { config: gs.config }, StatusCode::UNAUTHORIZED);
+    let err_template = html_with_status(
+        AccountLogin {
+            config: gs.config,
+            redirect: params.redirect.clone(),
+        },
+        StatusCode::UNAUTHORIZED,
+    );
 
     let user = match User::optional_find_by_username(&form.username, &gs.pool).await? {
         Some(user) => user,
@@ -386,6 +397,7 @@ pub async fn do_account_login(
 
     txn.commit().await?;
 
+    dbg!(&params.redirect);
     let redirect_url = match params.redirect {
         Some(redirect) => redirect,
         None => format!("/user/{}", user.username),

@@ -1452,6 +1452,7 @@ dependencies = [
  "cookie",
  "jsonwebtoken",
  "memory-serve",
+ "percent-encoding",
  "regex",
  "serde",
  "sqlx",
