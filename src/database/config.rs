@@ -1,5 +1,8 @@
 //! Logic for the `nbsp_config` table
 
+use axum_extra::extract::cookie::Key;
+use base64ct::{Base64, Encoding};
+use jsonwebtoken::DecodingKey;
 use sqlx::PgPool;
 
 /// A select set of data from the `nbsp_config`, to be used in axum's global state
@@ -28,6 +31,18 @@ pub struct NbspConfig {
 
     /// Any additional HTML to add at the end of `<body>` in templates
     pub nbsp_html_body_extra: String,
+
+    /// The key to encrypt private cookies with
+    pub nbsp_cookies_key: Key,
+
+    /// The JWT signing key for encoding and decoding JWTs with, encoded with base64
+    pub nbsp_jwt_signing_key: String,
+
+    /// The content security policy header to set on every response
+    pub nbsp_content_security_policy: String,
+
+    /// Whether to enable the Prometheus metrics endpoint
+    pub nbsp_enable_prometheus_metrics: bool,
 }
 
 impl NbspConfig {
@@ -45,7 +60,13 @@ impl NbspConfig {
             nbsp_community_subtitle: String::new(),
             nbsp_html_head_extra: String::new(),
             nbsp_html_body_extra: String::new(),
+            nbsp_cookies_key: Key::generate(),
+            nbsp_jwt_signing_key: String::new(),
+            nbsp_content_security_policy: String::new(),
+            nbsp_enable_prometheus_metrics: false,
         };
+
+        let mut save_generated_cookies_key = true;
 
         for (key, value) in &rows {
             if key == "nbsp_base_url"
@@ -81,6 +102,32 @@ impl NbspConfig {
             {
                 config.nbsp_html_body_extra = value.clone();
             }
+
+            if key == "nbsp_cookies_key"
+                && let Some(value) = value
+            {
+                config.nbsp_cookies_key =
+                    Key::from(Base64::decode_in_place(&mut value.clone().into_bytes()).unwrap());
+                save_generated_cookies_key = false;
+            }
+
+            if key == "nbsp_jwt_signing_key"
+                && let Some(value) = value
+            {
+                config.nbsp_jwt_signing_key = value.clone();
+            }
+
+            if key == "nbsp_content_security_policy"
+                && let Some(value) = value
+            {
+                config.nbsp_content_security_policy = value.clone();
+            }
+
+            if key == "nbsp_enable_prometheus_metrics"
+                && let Some(value) = value
+            {
+                config.nbsp_enable_prometheus_metrics = value == "true";
+            }
         }
 
         assert!(
@@ -88,6 +135,44 @@ impl NbspConfig {
             "nbsp_base_url from nbsp_config is empty"
         );
 
+        if save_generated_cookies_key {
+            Self::update_value(
+                "nbsp_cookies_key",
+                &Base64::encode_string(config.nbsp_cookies_key.master()),
+                pool,
+            )
+            .await?;
+        }
+
+        if config.nbsp_jwt_signing_key.is_empty() {
+            let secret = Key::generate();
+            config.nbsp_jwt_signing_key = Base64::encode_string(
+                DecodingKey::from_secret(secret.master())
+                    .try_get_as_bytes()
+                    .unwrap(),
+            );
+            Self::update_value("nbsp_jwt_signing_key", &config.nbsp_jwt_signing_key, pool).await?;
+        }
+
         Ok(config)
+    }
+
+    /// Update a config value with a given key
+    ///
+    /// This will return an error when the key for the value doesn't exist
+    pub async fn update_value(key: &str, value: &str, pool: &PgPool) -> sqlx::Result<()> {
+        let query = "UPDATE nbsp_config SET value = $1 WHERE key = $2 RETURNING config_id;";
+        let config_id = sqlx::query_scalar::<_, i64>(query)
+            .bind(value)
+            .bind(key)
+            .fetch_one(pool)
+            .await?;
+
+        assert!(
+            config_id > 0,
+            "expected update_value config_id to be > 0, key={key}"
+        );
+
+        Ok(())
     }
 }

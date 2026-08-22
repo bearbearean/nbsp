@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block body %}
+<header class="container page-header">
+  <img class="logo" src="/assets/nbsp-logo.png" alt="nbsp">
+  <h1 class="title">{{ config.nbsp_community_title }}</h1>
+  <p class="subtitle">{{ config.nbsp_community_subtitle }}</p>
+</header>
+
+<main class="container">
+  <h2>{{ target_user.username }}</h2>
+
+  <p>
+    Joined on <time datetime="{{ target_user.created_at.format("%F" ) }}">{{ target_user.created_at.format("%B %e, %Y" ) }}</time>.
+  </p>
+
+  {% if let Some(auth_user) = auth.user && auth_user.is(&target_user) %}
+  <p>
+    <a href="/account/logout">Click here to log out</a>
+  </p>
+  {% endif %}
+</main>
+{% endblock %}

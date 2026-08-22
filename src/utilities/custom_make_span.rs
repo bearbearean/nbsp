@@ -9,16 +9,17 @@ pub struct CustomMakeSpan {}
 impl<B> MakeSpan<B> for CustomMakeSpan {
     fn make_span(&mut self, request: &axum::http::Request<B>) -> tracing::Span {
         let span = tracing::span!(
-            tracing::Level::DEBUG,
+            tracing::Level::INFO,
             "request",
             method = %request.method(),
             uri = %request.uri(),
             "remote-address" = tracing::field::Empty,
             "x-forwarded-for" = tracing::field::Empty,
             "x-request-id" = tracing::field::Empty,
+            "user-agent" = tracing::field::Empty,
         );
 
-        let headers = ["x-forwarded-for", "x-request-id"];
+        let headers = ["x-forwarded-for", "x-request-id", "user-agent"];
         for header in headers {
             if let Some(value) = request
                 .headers()

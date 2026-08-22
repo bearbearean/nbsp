@@ -13,3 +13,7 @@ You can also find out how [nbsp.party](https://nbsp.party) is deployed in [the n
 From the beginning of the nbsp development, instance-wide configuration has been considered through the use of a database table called `nbsp_config`.
 
 Read more about configuring your nbsp instance in [the Configuration section](./configuration/index.html).
+
+## Database tips
+
+Various tips and SQL snippets for commonly used nbsp operations are collected in [the Database tips section](./database-tips/index.html).

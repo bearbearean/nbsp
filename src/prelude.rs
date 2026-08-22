@@ -5,6 +5,7 @@ pub use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+pub use chrono::{DateTime, Utc};
 pub use sqlx::PgPool;
 
 /// All possible errors nbsp can encounter during HTTP requests
@@ -13,6 +14,15 @@ pub enum WebError {
     /// [`askama`] HTML rendering error
     #[error("failed to render HTML")]
     Askama(#[from] askama::Error),
+    /// [`sqlx`] database errors
+    #[error("database error")]
+    Sqlx(#[from] sqlx::Error),
+    /// Error when hashing a password with [`argon2`]
+    #[error("password hashing error")]
+    PasswordHashing(#[from] argon2::password_hash::Error),
+    /// Errors when handling [`jsonwebtoken`]
+    #[error("jwt error")]
+    Jwt(#[from] jsonwebtoken::errors::Error),
     /// Any custom internal server error
     #[error("internal server error")]
     InternalServerError(String),

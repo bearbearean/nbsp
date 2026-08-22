@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block body %}
+<header class="container page-header">
+  <img class="logo" src="/assets/nbsp-logo.png" alt="nbsp">
+  <h1 class="title">{{ config.nbsp_community_title }}</h1>
+  <p class="subtitle">{{ config.nbsp_community_subtitle }}</p>
+</header>
+
+<main class="container">
+  <form action="/account/register" method="post" class="form">
+    <h2>Create an account</h2>
+
+    <div class="label-input">
+      <label class="label" for="username">Username</label>
+      <input class="input" type="text" name="username" id="username"
+        minlength="{{ User::USERNAME_LENGTH.start() }}"
+        maxlength="{{ User::USERNAME_LENGTH.end() }}"
+        {#- Ensure usernames starts and ends with a letter or number and allow underscores in between #}
+        pattern="{{ User::USERNAME_REGEX.as_str() }}"
+        required>
+    </div>
+
+    <div class="label-input">
+      <label class="label" for="password">Password</label>
+      <input class="input" type="password" name="password" id="password"
+        minlength="{{ User::PASSWORD_LENGTH.start() }}"
+        maxlength="{{ User::PASSWORD_LENGTH.end() }}"
+        {#- Ensure at least 1 of each: lowercase, uppercase, number and other character #}
+        pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).*$"
+        required>
+    </div>
+
+    <div class="label-input">
+      <label class="label" for="confirm_password">Confirm your password</label>
+      <input class="input" type="password" name="confirm_password" id="confirm_password"
+        minlength="{{ User::PASSWORD_LENGTH.start() }}"
+        maxlength="{{ User::PASSWORD_LENGTH.end() }}"
+        {#- Ensure at least 1 of each: lowercase, uppercase, number and other character #}
+        pattern="^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^a-zA-Z0-9]).*$"
+        required>
+    </div>
+
+    <div class="label-input">
+      <label class="label" for="invite">Invite code</label>
+      <input class="input" type="text" name="invite" id="invite"
+        {% if let Some(code) = prefilled_invite_code %}value="{{ code }}"{% endif %}
+        pattern="^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
+        required>
+    </div>
+
+    <div>
+      <button class="submit" type="submit">Create account</button>
+    </div>
+
+    <div class="register-requirements">
+      <h2 class="title">Requirements</h2>
+
+      <h3 class="title">Username</h3>
+      <ul class="list">
+        <li>At least {{ User::USERNAME_LENGTH.start() }} and at most {{ User::USERNAME_LENGTH.end() }} characters long.</li>
+        <li>Can only contain letters, numbers and underscores. And it must not start or end with an underscore.</li>
+        <li>Must not yet be in use by someone else.</li>
+      </ul>
+
+      <h3 class="title">Password</h3>
+      <ul class="list">
+        <li>At least {{ User::PASSWORD_LENGTH.start() }} and at most {{ User::PASSWORD_LENGTH.end() }} characters long.</li>
+        <li>Must have at least 1 lowercase letter, 1 uppercase letter, 1 number and 1 other character in it.</li>
+        <li>Your password and confirm password must match.</li>
+      </ul>
+
+      <h3 class="title">Invite code</h3>
+      <ul class="list">
+        <li>Your invite code must match the expected UUID format.</li>
+        <li>Your invite code must not yet have been used by someone else.</li>
+      </ul>
+    </div>
+  </form>
+</main>
+{% endblock %}

@@ -6,7 +6,7 @@
 
 ## Changelog
 
-A changelog of version releases is automatically kept [in CHANGELOG.md](https://github.com/bearbearean/nbsp/blob/main/CHANGELOG.md). If you want to keep up with the unreleased and in progress features of nbsp, look for [an open "chore: release" PR](https://github.com/bearbearean/nbsp/pulls?q=is%3Apr+is%3Aopen+chore%3A+release).
+A changelog of version releases is automatically kept [in CHANGELOG.md](https://github.com/bearbearean/nbsp/blob/main/CHANGELOG.md). If you want to keep up with the unreleased and in progress features of nbsp, look for [an open release or development PR](https://github.com/bearbearean/nbsp/issues?q=is%3Apr%20AND%20state%3Aopen%20(%20release%20in%3Atitle%20OR%20head%3Adev%20)%20sort%3Aupdated-desc).
 
 ## Pull requests
 

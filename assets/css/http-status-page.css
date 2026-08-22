@@ -1,22 +1,28 @@
 .http-status-page {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  justify-content: center;
   min-height: 100vh;
-  padding: 10px;
 
-  .title {
-    border-bottom: 1px solid;
-    padding-bottom: 20px;
-  }
+  main.container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    justify-content: center;
+    margin-top: auto;
+    margin-bottom: auto;
 
-  .description {
-    font-size: 2rem;
-  }
+    .title {
+      border-bottom: 1px solid;
+      padding-bottom: 20px;
+    }
 
-  .x-request-id {
-    color: #aaaaaa;
-    font-family: monospace;
+    .description {
+      font-size: 2rem;
+    }
+
+    .x-request-id {
+      color: #aaaaaa;
+      font-family: monospace;
+    }
   }
 }
