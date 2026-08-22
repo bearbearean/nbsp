@@ -4,7 +4,7 @@ description = "non-breaking space: a thoughtful community forum platform"
 repository = "https://github.com/bearbearean/nbsp"
 license = "AGPL-3.0-or-later"
 edition = "2024"
-version = "0.0.3"
+version = "0.0.4"
 
 [lints]
 rust.missing_docs = "warn"
