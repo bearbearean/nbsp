@@ -131,6 +131,11 @@ impl User {
             .fetch_optional(pool)
             .await
     }
+
+    /// Check whether a target user is this user
+    pub fn is(&self, target_user: &User) -> bool {
+        self.user_id == target_user.user_id
+    }
 }
 
 #[cfg(test)]

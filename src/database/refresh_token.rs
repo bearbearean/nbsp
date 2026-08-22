@@ -47,4 +47,23 @@ impl RefreshToken {
             .fetch_one(pool)
             .await
     }
+
+    /// Delete a refresh token from the database, this does not error if nothing is deleted. A
+    /// warning will be logged however
+    pub async fn optional_delete(token: &Uuid, pool: &PgPool) -> sqlx::Result<()> {
+        let query = "DELETE FROM refresh_tokens WHERE refresh_token = $1 RETURNING token_id;";
+        let token_id = sqlx::query_scalar::<_, i64>(query)
+            .bind(token)
+            .fetch_optional(pool)
+            .await?;
+
+        if token_id.is_none() {
+            tracing::warn!(
+                token = ?token,
+                "tried to delete refresh token that does not exist in the database"
+            );
+        }
+
+        Ok(())
+    }
 }

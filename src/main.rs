@@ -154,7 +154,9 @@ pub async fn main() -> Result<()> {
             auth_not_allowed,
         ));
 
-    let router_with_optional_auth = Router::new().route("/", routing::get(root));
+    let router_with_optional_auth = Router::new()
+        .route("/", routing::get(root))
+        .route("/account/logout", routing::get(account_logout));
 
     let router = Router::new()
         .merge(router_with_optional_auth)
@@ -438,4 +440,18 @@ pub async fn user_profile(
             StatusCode::NOT_FOUND,
         ),
     }
+}
+
+/// The route for `GET /account/logout`
+pub async fn account_logout(State(gs): State<GlobalState>, jar: PrivateCookieJar) -> WebResult {
+    // If there is a refresh token in the cookies then delete that token from the database
+    if let Some(Ok(refresh)) = jar
+        .get("refresh")
+        .map(|refresh| Uuid::try_parse(refresh.value()))
+    {
+        RefreshToken::optional_delete(&refresh, &gs.pool).await?;
+    }
+
+    let jar = jar.remove("jwt").remove("refresh");
+    Ok((jar, Redirect::to("/")).into_response())
 }

@@ -13,5 +13,11 @@
   <p>
     Joined on <time datetime="{{ target_user.created_at.format("%F" ) }}">{{ target_user.created_at.format("%B %e, %Y" ) }}</time>.
   </p>
+
+  {% if let Some(auth_user) = auth.user && auth_user.is(&target_user) %}
+  <p>
+    <a href="/account/logout">Click here to log out</a>
+  </p>
+  {% endif %}
 </main>
 {% endblock %}
