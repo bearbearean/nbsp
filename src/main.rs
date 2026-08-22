@@ -40,7 +40,8 @@ use crate::{
     prelude::*,
     templates::{AccountLogin, AccountRegister, Homepage, HttpStatusPage, UserProfile},
     utilities::{
-        CustomMakeSpan, build_cookie, hash_password, html, html_with_status, verify_password,
+        CustomMakeSpan, build_cookie, hash_password, html, html_with_status, removal_cookie,
+        verify_password,
     },
 };
 
@@ -452,6 +453,8 @@ pub async fn account_logout(State(gs): State<GlobalState>, jar: PrivateCookieJar
         RefreshToken::optional_delete(&refresh, &gs.pool).await?;
     }
 
-    let jar = jar.remove("jwt").remove("refresh");
+    let jar = jar
+        .remove(removal_cookie("jwt"))
+        .remove(removal_cookie("refresh"));
     Ok((jar, Redirect::to("/")).into_response())
 }

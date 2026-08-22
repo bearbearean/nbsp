@@ -19,7 +19,7 @@ use crate::{
     GlobalState,
     database::{RefreshToken, User},
     prelude::*,
-    utilities::build_cookie,
+    utilities::{build_cookie, removal_cookie},
 };
 
 /// Authentication context for a request
@@ -91,7 +91,9 @@ pub async fn auth_base(
                 _ => {
                     tracing::trace!(jwt_err = ?err, "invalid jwt encountered");
                     // Clear invalid tokens from cookies
-                    jar = jar.remove("jwt").remove("refresh");
+                    jar = jar
+                        .remove(removal_cookie("jwt"))
+                        .remove(removal_cookie("refresh"));
                     do_refresh = false;
                 }
             },
@@ -115,7 +117,9 @@ pub async fn auth_base(
                     "expired jwt with refresh token cookie could not find refresh token in db"
                 );
                 // Clear invalid tokens from cookies
-                jar = jar.remove("jwt").remove("refresh");
+                jar = jar
+                    .remove(removal_cookie("jwt"))
+                    .remove(removal_cookie("refresh"));
             }
         } else {
             tracing::warn!(
@@ -123,7 +127,9 @@ pub async fn auth_base(
                 "expired jwt with invalid uuid as refresh token"
             );
             // Clear invalid tokens from cookies
-            jar = jar.remove("jwt").remove("refresh");
+            jar = jar
+                .remove(removal_cookie("jwt"))
+                .remove(removal_cookie("refresh"));
         }
     }
 

@@ -16,3 +16,10 @@ pub fn build_cookie<'a>(key: &'a str, value: String, max_age: Option<Duration>) 
 
     cookie.build()
 }
+
+/// Build a cookie to be removed
+pub fn removal_cookie<'a>(key: &'a str) -> Cookie<'a> {
+    // The path has to match the path in build_cookie otherwise the cookies won't be removed
+    // correctly
+    Cookie::build(key).path("/").removal().build()
+}
