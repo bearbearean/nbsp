@@ -400,7 +400,6 @@ pub async fn do_account_login(
 
     txn.commit().await?;
 
-    dbg!(&params.redirect);
     let redirect_url = match params.redirect {
         Some(redirect) => redirect,
         None => format!("/user/{}", user.username),
