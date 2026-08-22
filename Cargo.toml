@@ -21,6 +21,8 @@ chrono = "0.4.45"
 cookie = "0.18.2"
 jsonwebtoken = { version = "11.0.0", features = ["rust_crypto"] }
 memory-serve = "2.3.0"
+metrics = { version = "0.24.6", default-features = false }
+metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 percent-encoding = "2.3.2"
 regex = "1.13.1"
 serde = { version = "1.0.229", features = ["derive"] }

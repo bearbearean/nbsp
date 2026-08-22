@@ -6,14 +6,16 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     Extension, Form, Router,
-    extract::{FromRef, Path, Query, Request, State},
+    extract::{FromRef, MatchedPath, Path, Query, Request, State},
     http::HeaderMap,
+    middleware::Next,
     response::Redirect,
     routing,
 };
 use axum_extra::extract::{PrivateCookieJar, cookie::Key};
 use cookie::time::Duration;
 use jsonwebtoken::{DecodingKey, EncodingKey};
+use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 use serde::Deserialize;
 use sqlx::types::Uuid;
 use tokio::net::TcpListener;
@@ -96,7 +98,7 @@ pub async fn main() -> Result<()> {
 
     let global_state = GlobalState {
         pool: pool.clone(),
-        config,
+        config: config.clone(),
         cookies_key,
         jwt_encoding_key,
         jwt_decoding_key,
@@ -168,10 +170,35 @@ pub async fn main() -> Result<()> {
         .layer(axum::middleware::from_fn_with_state(
             global_state.clone(),
             auth_base,
-        ))
+        ));
+
+    let router = if config.nbsp_enable_prometheus_metrics {
+        router.layer(axum::middleware::from_fn(http_metrics))
+    } else {
+        router
+    };
+
+    let router = router
         .layer(services)
         .nest("/assets", memory_serve::load!().into_router())
         .with_state(global_state);
+
+    if config.nbsp_enable_prometheus_metrics {
+        let recorder = start_metrics_recorder();
+        let metrics_router =
+            Router::new().route("/metrics", routing::get(async move || recorder.render()));
+        let metrics_listener = TcpListener::bind("127.0.0.1:3001")
+            .await
+            .context("failed to bind 127.0.0.1:3001, is the port already in use?")?;
+
+        tokio::spawn(async {
+            tracing::info!("metrics listening on http://127.0.0.1:3001");
+            axum::serve(metrics_listener, metrics_router)
+                .await
+                .context("failed to serve metrics on http://127.0.0.1:3001")
+                .unwrap()
+        });
+    }
 
     let listener = TcpListener::bind("127.0.0.1:3000")
         .await
@@ -457,4 +484,41 @@ pub async fn account_logout(State(gs): State<GlobalState>, jar: PrivateCookieJar
         .remove(removal_cookie("jwt"))
         .remove(removal_cookie("refresh"));
     Ok((jar, Redirect::to("/")).into_response())
+}
+
+/// Prometheus metrics for HTTP requests
+pub async fn http_metrics(request: Request, next: Next) -> impl IntoResponse {
+    let method = request.method().clone().to_string();
+    // Use MatchedPath so we get "/user/{username}" as the path instead of actual usernames
+    let path = if let Some(matched_path) = request.extensions().get::<MatchedPath>() {
+        matched_path.as_str().to_string()
+    } else {
+        request.uri().path().to_string()
+    };
+
+    let response = next.run(request).await;
+
+    let status = response.status().as_u16().to_string();
+    let labels = [("method", method), ("path", path), ("status", status)];
+
+    metrics::counter!("http_requests_total", &labels).increment(1);
+
+    response
+}
+
+/// Create and start the metrics recorder
+pub fn start_metrics_recorder() -> PrometheusHandle {
+    let recorder = PrometheusBuilder::new()
+        .install_recorder()
+        .expect("failed to start metrics recorder");
+
+    let upkeep = recorder.clone();
+    tokio::spawn(async move {
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            upkeep.run_upkeep();
+        }
+    });
+
+    recorder
 }

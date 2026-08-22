@@ -40,6 +40,9 @@ pub struct NbspConfig {
 
     /// The content security policy header to set on every response
     pub nbsp_content_security_policy: String,
+
+    /// Whether to enable the Prometheus metrics endpoint
+    pub nbsp_enable_prometheus_metrics: bool,
 }
 
 impl NbspConfig {
@@ -60,6 +63,7 @@ impl NbspConfig {
             nbsp_cookies_key: Key::generate(),
             nbsp_jwt_signing_key: String::new(),
             nbsp_content_security_policy: String::new(),
+            nbsp_enable_prometheus_metrics: false,
         };
 
         let mut save_generated_cookies_key = true;
@@ -117,6 +121,12 @@ impl NbspConfig {
                 && let Some(value) = value
             {
                 config.nbsp_content_security_policy = value.clone();
+            }
+
+            if key == "nbsp_enable_prometheus_metrics"
+                && let Some(value) = value
+            {
+                config.nbsp_enable_prometheus_metrics = value == "true";
             }
         }
 

@@ -107,3 +107,10 @@ The [content security policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/
 
 * Available in versions `>=0.0.4`
 * Defaults to `default-src 'self';`
+
+### nbsp_enable_prometheus_metrics
+
+Set this to `true` to enable the Prometheus metrics endpoint at `http://127.0.0.1:3001/metrics`. Note this uses the `3001` port as opposed to nbsp's `3000` port.
+
+* Available in versions `>=0.0.4`
+* Defaults to `false`
