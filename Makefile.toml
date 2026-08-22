@@ -1,5 +1,6 @@
 [tasks.dev]
 clear = true
+env = { RUST_LOG = "trace" }
 script = "cargo run -q | hl --follow -x always"
 
 [tasks.make-pg-dir]
