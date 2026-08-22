@@ -6,7 +6,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     Extension, Form, Router,
-    extract::{FromRef, Query, Request, State},
+    extract::{FromRef, Path, Query, Request, State},
     http::HeaderMap,
     response::Redirect,
     routing,
@@ -38,7 +38,7 @@ use crate::{
     auth::{Auth, auth_base, auth_not_allowed, auth_required, generate_jwt},
     database::{Invite, NbspConfig, RefreshToken, User},
     prelude::*,
-    templates::{AccountLogin, AccountRegister, Homepage, HttpStatusPage},
+    templates::{AccountLogin, AccountRegister, Homepage, HttpStatusPage, UserProfile},
     utilities::{
         CustomMakeSpan, build_cookie, hash_password, html, html_with_status, verify_password,
     },
@@ -134,7 +134,7 @@ pub async fn main() -> Result<()> {
         ));
 
     let router_with_auth = Router::new()
-        .route("/auth-test", routing::get(async || "authed!"))
+        .route("/user/{username}", routing::get(user_profile))
         .layer(axum::middleware::from_fn_with_state(
             global_state.clone(),
             auth_required,
@@ -411,4 +411,32 @@ pub async fn do_account_login(
         Redirect::to(&redirect_url),
     )
         .into_response())
+}
+
+/// The route for `GET /user/{username}`
+pub async fn user_profile(
+    State(gs): State<GlobalState>,
+    Extension(auth): Extension<Auth>,
+    headers: HeaderMap,
+    Path(username): Path<String>,
+) -> WebResult {
+    match User::optional_find_by_username(&username, &gs.pool).await? {
+        Some(target_user) => html(UserProfile {
+            auth,
+            config: gs.config,
+            target_user,
+        }),
+        None => html_with_status(
+            HttpStatusPage {
+                config: gs.config,
+                title: "User not found - HTTP 404",
+                description: "There doesn't seem to be anyone by that username.",
+                x_request_id: headers
+                    .get("x-request-id")
+                    .and_then(|value| value.to_str().ok())
+                    .unwrap_or(""),
+            },
+            StatusCode::NOT_FOUND,
+        ),
+    }
 }

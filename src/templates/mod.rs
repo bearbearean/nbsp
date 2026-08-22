@@ -50,3 +50,15 @@ pub struct AccountLogin {
     /// The URL to redirect back to after login
     pub redirect: Option<String>,
 }
+
+/// The user profile template
+#[derive(Template)]
+#[template(path = "pages/user.html")]
+pub struct UserProfile {
+    /// The [`NbspConfig`] for the instance
+    pub config: NbspConfig,
+    /// The authentication context, this contains the authenticated user
+    pub auth: Auth,
+    /// The user to view the profile of
+    pub target_user: User,
+}
