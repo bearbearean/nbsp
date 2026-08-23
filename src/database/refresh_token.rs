@@ -66,4 +66,28 @@ impl RefreshToken {
 
         Ok(())
     }
+
+    /// Delete inactive refresh tokens from the database
+    ///
+    /// Refresh tokens are considered inactive when they were created more than 30 days ago
+    pub async fn clean_inactive(pool: &PgPool) {
+        let query = r#"
+DELETE FROM refresh_tokens
+WHERE created_at < (now() - INTERVAL '30 days');
+"#;
+        match sqlx::query(query).execute(pool).await {
+            Ok(query_result) => {
+                tracing::info!(
+                    count = query_result.rows_affected(),
+                    "cleaned inactive refresh tokens"
+                );
+            }
+            Err(err) => {
+                tracing::error!(
+                    err = ?err,
+                    "error cleaning inactive refresh tokens"
+                );
+            }
+        }
+    }
 }

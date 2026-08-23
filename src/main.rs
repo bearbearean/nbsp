@@ -200,6 +200,8 @@ pub async fn main() -> Result<()> {
         });
     }
 
+    start_refresh_tokens_cleaner(pool.clone());
+
     let listener = TcpListener::bind("127.0.0.1:3000")
         .await
         .context("failed to bind 127.0.0.1:3000, is the port already in use?")?;
@@ -521,4 +523,15 @@ pub fn start_metrics_recorder() -> PrometheusHandle {
     });
 
     recorder
+}
+
+/// Starts the background task to automatically clean up inactive refresh tokens
+pub fn start_refresh_tokens_cleaner(pool: PgPool) {
+    tokio::spawn(async move {
+        tracing::info!("starting refresh tokens cleaner background task");
+        loop {
+            RefreshToken::clean_inactive(&pool).await;
+            tokio::time::sleep(tokio::time::Duration::from_hours(24)).await;
+        }
+    });
 }
