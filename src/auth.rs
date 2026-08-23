@@ -50,7 +50,7 @@ pub fn generate_jwt(key: &EncodingKey, user_id: i64) -> jsonwebtoken::errors::Re
     let header = Header::new(JWT_ALGORITHM);
     let claims = JwtClaims {
         sub: user_id,
-        exp: (now + Duration::minutes(30)).timestamp() as usize,
+        exp: (now + Duration::minutes(15)).timestamp() as usize,
         iat: now.timestamp() as usize,
     };
 
