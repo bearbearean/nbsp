@@ -2,7 +2,7 @@
 //!
 //! > non-breaking space: a thoughtful community forum platform
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc, time::Instant};
 
 use axum::{
     Extension, Form, Router,
@@ -15,7 +15,7 @@ use axum::{
 use axum_extra::extract::{PrivateCookieJar, cookie::Key};
 use cookie::time::Duration;
 use jsonwebtoken::{DecodingKey, EncodingKey};
-use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
+use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use serde::Deserialize;
 use sqlx::types::Uuid;
 use tokio::net::TcpListener;
@@ -490,6 +490,7 @@ pub async fn account_logout(State(gs): State<GlobalState>, jar: PrivateCookieJar
 
 /// Prometheus metrics for HTTP requests
 pub async fn http_metrics(request: Request, next: Next) -> impl IntoResponse {
+    let start = Instant::now();
     let method = request.method().clone().to_string();
     // Use MatchedPath so we get "/user/{username}" as the path instead of actual usernames
     let path = if let Some(matched_path) = request.extensions().get::<MatchedPath>() {
@@ -499,18 +500,29 @@ pub async fn http_metrics(request: Request, next: Next) -> impl IntoResponse {
     };
 
     let response = next.run(request).await;
+    let latency = start.elapsed().as_secs_f64();
 
     let status = response.status().as_u16().to_string();
     let labels = [("method", method), ("path", path), ("status", status)];
 
     metrics::counter!("http_requests_total", &labels).increment(1);
+    metrics::histogram!("http_requests_duration_seconds", &labels).record(latency);
 
     response
 }
 
 /// Create and start the metrics recorder
 pub fn start_metrics_recorder() -> PrometheusHandle {
+    const EXPONENTIAL_SECONDS: &[f64] = &[
+        0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+    ];
+
     let recorder = PrometheusBuilder::new()
+        .set_buckets_for_metric(
+            Matcher::Full("http_requests_duration_seconds".to_string()),
+            EXPONENTIAL_SECONDS,
+        )
+        .unwrap()
         .install_recorder()
         .expect("failed to start metrics recorder");
 
