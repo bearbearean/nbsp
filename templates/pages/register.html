@@ -11,6 +11,12 @@
   <form action="/account/register" method="post" class="form">
     <h2>Create an account</h2>
 
+    {% if let Some(error_message) = form_error_message %}
+      <div class="error-message">
+        <p>{{ error_message }}</p>
+      </div>
+    {% endif %}
+
     <div class="label-input">
       <label class="label" for="username">Username</label>
       <input class="input" type="text" name="username" id="username"

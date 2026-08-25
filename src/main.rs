@@ -42,8 +42,8 @@ use crate::{
     prelude::*,
     templates::{AccountLogin, AccountRegister, Homepage, HttpStatusPage, UserProfile},
     utilities::{
-        CustomMakeSpan, build_cookie, hash_password, html, html_with_status, removal_cookie,
-        verify_password,
+        CustomMakeSpan, LoginUserError, RegisterUserError, build_cookie, hash_password, html,
+        html_with_status, removal_cookie, verify_password,
     },
 };
 
@@ -276,6 +276,7 @@ pub async fn account_register(
     html(AccountRegister {
         config: gs.config,
         prefilled_invite_code: params.0.invite,
+        form_error_message: None,
     })
 }
 
@@ -309,31 +310,38 @@ pub async fn do_account_register(
     Form(form): Form<AccountRegisterForm>,
 ) -> WebResult {
     let err_status = StatusCode::UNPROCESSABLE_ENTITY;
-    let template = AccountRegister {
+    let mut template = AccountRegister {
         config: gs.config,
         prefilled_invite_code: Some(form.invite.clone()),
+        form_error_message: None,
     };
 
     let invite = match Uuid::try_parse(&form.invite) {
         Ok(invite) => invite,
-        Err(_) => return html_with_status(template, err_status),
+        Err(_) => {
+            template.form_error_message = Some(RegisterUserError::InviteCode);
+            return html_with_status(template, err_status);
+        }
     };
 
     let form_is_valid = form.validate();
     if !form_is_valid {
         tracing::info!("attempted user registration with invalid form details");
+        template.form_error_message = Some(RegisterUserError::InvalidForm);
         return html_with_status(template, err_status);
     }
 
     let username_is_available = User::is_username_available(&form.username, &gs.pool).await?;
     if !username_is_available {
         tracing::info!("attempted user registration with existing username");
+        template.form_error_message = Some(RegisterUserError::ExistingUsername);
         return html_with_status(template, err_status);
     }
 
     let invite_is_available = Invite::is_invite_available(&invite, &gs.pool).await?;
     if !invite_is_available {
         tracing::info!("attempted user registration with unavailable invite code");
+        template.form_error_message = Some(RegisterUserError::InviteCode);
         return html_with_status(template, err_status);
     }
 
@@ -355,6 +363,7 @@ pub async fn do_account_register(
         )
             .into_response())
     } else {
+        template.form_error_message = Some(RegisterUserError::Unknown);
         html_with_status(template, err_status)
     }
 }
@@ -381,6 +390,7 @@ pub async fn account_login(
     html(AccountLogin {
         config: gs.config,
         redirect: params.redirect,
+        form_error_message: None,
     })
 }
 
@@ -401,23 +411,24 @@ pub async fn do_account_login(
     Form(form): Form<AccountLoginForm>,
 ) -> WebResult {
     let mut txn = gs.pool.begin().await?;
-    let err_template = html_with_status(
-        AccountLogin {
-            config: gs.config,
-            redirect: params.redirect.clone(),
-        },
-        StatusCode::UNAUTHORIZED,
-    );
+    let status = StatusCode::UNAUTHORIZED;
+    let mut err_template = AccountLogin {
+        config: gs.config,
+        redirect: params.redirect.clone(),
+        form_error_message: None,
+    };
 
     let user = match User::optional_find_by_username(&form.username, &gs.pool).await? {
         Some(user) => user,
         None => {
-            return err_template;
+            err_template.form_error_message = Some(LoginUserError::IncorrectLogin);
+            return html_with_status(err_template, status);
         }
     };
 
     if !verify_password(form.password.as_bytes(), user.password_hash.as_deref())? {
-        return err_template;
+        err_template.form_error_message = Some(LoginUserError::IncorrectLogin);
+        return html_with_status(err_template, status);
     }
 
     let jwt = generate_jwt(&gs.jwt_encoding_key, user.user_id).map_err(WebError::Jwt)?;

@@ -175,6 +175,15 @@ body {
       background-color: #c1ff0722;
     }
   }
+
+  .error-message {
+    background-color: #fa910722;
+    border: 1px solid #fa9107;
+    border-radius: 4px;
+    color: #fa9107;
+    max-width: 400px;
+    padding: 10px;
+  }
 }
 
 .register-requirements {

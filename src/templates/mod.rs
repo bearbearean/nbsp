@@ -5,6 +5,7 @@ use askama::Template;
 use crate::{
     auth::Auth,
     database::{NbspConfig, User},
+    utilities::{LoginUserError, RegisterUserError},
 };
 
 /// The homepage template
@@ -39,6 +40,8 @@ pub struct AccountRegister {
     pub config: NbspConfig,
     /// An invite code to prefill in the invite input
     pub prefilled_invite_code: Option<String>,
+    /// An optional error message to show as feedback for the user
+    pub form_error_message: Option<RegisterUserError>,
 }
 
 /// The account login template
@@ -49,6 +52,8 @@ pub struct AccountLogin {
     pub config: NbspConfig,
     /// The URL to redirect back to after login
     pub redirect: Option<String>,
+    /// An optional error message to show as feedback for the user
+    pub form_error_message: Option<LoginUserError>,
 }
 
 /// The user profile template
