@@ -13,7 +13,6 @@ use axum::{
     routing,
 };
 use axum_extra::extract::{PrivateCookieJar, cookie::Key};
-use cookie::time::Duration;
 use jsonwebtoken::{DecodingKey, EncodingKey};
 use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use serde::Deserialize;
@@ -30,20 +29,24 @@ use tower_http::{
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
-pub mod auth;
 pub mod database;
+pub mod jwt;
 pub mod prelude;
 pub mod templates;
 pub mod utilities;
 
 use crate::{
-    auth::{Auth, auth_base, auth_not_allowed, auth_required, generate_jwt},
     database::{Invite, NbspConfig, RefreshToken, User},
+    jwt::{
+        auth::{Auth, auth_base, auth_not_allowed, auth_required},
+        cookies::{COOKIE_REFRESH, COOKIE_REFRESH_MAX_AGE, build_cookie, clear_cookie_jar},
+        generate_jwt_cookie,
+    },
     prelude::*,
     templates::{AccountLogin, AccountRegister, Homepage, HttpStatusPage, UserProfile},
     utilities::{
-        CustomMakeSpan, LoginUserError, RegisterUserError, build_cookie, hash_password, html,
-        html_with_status, removal_cookie, verify_password,
+        CustomMakeSpan, LoginUserError, RegisterUserError, hash_password, html, html_with_status,
+        verify_password,
     },
 };
 
@@ -349,12 +352,11 @@ pub async fn do_account_register(
         let password_hash = hash_password(form.password.as_bytes())?;
         let (user, refresh_token) =
             User::register_account(&form.username, &password_hash, &invite, &gs.pool).await?;
-        let jwt = generate_jwt(&gs.jwt_encoding_key, user.user_id)?;
-        let jwt_cookie = build_cookie("jwt", jwt, Some(Duration::hours(1)));
+        let jwt_cookie = generate_jwt_cookie(&gs.jwt_encoding_key, user.user_id)?;
         let refresh_cookie = build_cookie(
-            "refresh",
+            COOKIE_REFRESH,
             refresh_token.refresh_token.to_string(),
-            Some(Duration::days(30)),
+            Some(COOKIE_REFRESH_MAX_AGE),
         );
 
         Ok((
@@ -431,14 +433,12 @@ pub async fn do_account_login(
         return html_with_status(err_template, status);
     }
 
-    let jwt = generate_jwt(&gs.jwt_encoding_key, user.user_id).map_err(WebError::Jwt)?;
-    let jwt_cookie = build_cookie("jwt", jwt, Some(Duration::hours(1)));
-
+    let jwt_cookie = generate_jwt_cookie(&gs.jwt_encoding_key, user.user_id)?;
     let refresh_token = RefreshToken::new_for_user(user.user_id, &mut txn).await?;
     let refresh_cookie = build_cookie(
-        "refresh",
+        COOKIE_REFRESH,
         refresh_token.refresh_token.to_string(),
-        Some(Duration::days(30)),
+        Some(COOKIE_REFRESH_MAX_AGE),
     );
 
     txn.commit().await?;
@@ -448,11 +448,8 @@ pub async fn do_account_login(
         None => format!("/user/{}", user.username),
     };
 
-    Ok((
-        jar.add(jwt_cookie).add(refresh_cookie),
-        Redirect::to(&redirect_url),
-    )
-        .into_response())
+    let jar = jar.add(jwt_cookie).add(refresh_cookie);
+    Ok((jar, Redirect::to(&redirect_url)).into_response())
 }
 
 /// The route for `GET /user/{username}`
@@ -487,15 +484,13 @@ pub async fn user_profile(
 pub async fn account_logout(State(gs): State<GlobalState>, jar: PrivateCookieJar) -> WebResult {
     // If there is a refresh token in the cookies then delete that token from the database
     if let Some(Ok(refresh)) = jar
-        .get("refresh")
+        .get(COOKIE_REFRESH)
         .map(|refresh| Uuid::try_parse(refresh.value()))
     {
         RefreshToken::optional_delete(&refresh, &gs.pool).await?;
     }
 
-    let jar = jar
-        .remove(removal_cookie("jwt"))
-        .remove(removal_cookie("refresh"));
+    let jar = clear_cookie_jar(jar);
     Ok((jar, Redirect::to("/")).into_response())
 }
 

@@ -6,20 +6,21 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Redirect},
 };
-use axum_extra::extract::PrivateCookieJar;
-use chrono::Duration;
-use jsonwebtoken::{
-    Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode,
-    errors::ErrorKind::ExpiredSignature,
-};
-use serde::{Deserialize, Serialize};
+use cookie::Cookie;
+use jsonwebtoken::{EncodingKey, errors::ErrorKind::ExpiredSignature};
 use sqlx::types::Uuid;
 
 use crate::{
     GlobalState,
     database::{RefreshToken, User},
+    jwt::{
+        cookies::{
+            COOKIE_JWT, COOKIE_REFRESH, COOKIES_MAX_AGE, build_cookie, clear_cookie_jar,
+            cookie_jar_from_request,
+        },
+        generate_jwt, validate_jwt,
+    },
     prelude::*,
-    utilities::{build_cookie, removal_cookie},
 };
 
 /// Authentication context for a request
@@ -29,39 +30,16 @@ pub struct Auth {
     pub user: Option<User>,
 }
 
-/// [`jsonwebtoken`] claims
-#[derive(Deserialize, Serialize)]
-pub struct JwtClaims {
-    /// Subject claim, this will be the user_id
-    pub sub: i64,
-    /// When the JWT expires
-    pub exp: usize,
-    /// When the JWT was issued
-    pub iat: usize,
-}
-
-/// The algorithm to use for [`generate_jwt`] and [`validate_jwt`]
-pub static JWT_ALGORITHM: Algorithm = Algorithm::HS256;
-
-/// Generate a JWT for a user
-pub fn generate_jwt(key: &EncodingKey, user_id: i64) -> jsonwebtoken::errors::Result<String> {
-    tracing::trace!(user_id, "generating jwt");
-    let now = Utc::now();
-    let header = Header::new(JWT_ALGORITHM);
-    let claims = JwtClaims {
-        sub: user_id,
-        exp: (now + Duration::minutes(15)).timestamp() as usize,
-        iat: now.timestamp() as usize,
-    };
-
-    encode(&header, &claims, key)
-}
-
-/// Validate a given JWT `token` and its claims
-pub fn validate_jwt(key: &DecodingKey, token: &str) -> jsonwebtoken::errors::Result<JwtClaims> {
-    let mut validation = Validation::new(JWT_ALGORITHM);
-    validation.set_required_spec_claims(&["exp"]);
-    Ok(decode::<JwtClaims>(token, key, &validation)?.claims)
+/// Update the refresh token's last updated date, generate a new JWT and return it as a cookie
+pub async fn refresh_jwt_token<'a>(
+    refresh_token: RefreshToken,
+    jwt_encoding_key: &EncodingKey,
+    pool: &PgPool,
+) -> Result<(Cookie<'a>, RefreshToken), crate::WebError> {
+    let refresh_token = refresh_token.update_last_used(pool).await?;
+    let jwt = generate_jwt(jwt_encoding_key, refresh_token.user_id)?;
+    let jwt_cookie = build_cookie(COOKIE_JWT, jwt, Some(COOKIES_MAX_AGE));
+    Ok((jwt_cookie.build(), refresh_token))
 }
 
 /// Base authentication middleware that supports authenticated and unauthenticated requests
@@ -70,8 +48,8 @@ pub async fn auth_base(
     mut request: Request,
     next: Next,
 ) -> WebResult {
-    let mut jar = PrivateCookieJar::from_headers(request.headers(), gs.cookies_key);
-    let (jwt, refresh) = (jar.get("jwt"), jar.get("refresh"));
+    let mut jar = cookie_jar_from_request(&request, gs.cookies_key);
+    let (jwt, refresh) = (jar.get(COOKIE_JWT), jar.get(COOKIE_REFRESH));
 
     let mut auth = Auth { user: None };
 
@@ -83,7 +61,7 @@ pub async fn auth_base(
             Ok(claims) => {
                 auth.user = User::optional_find_by_id(claims.sub, &gs.pool).await?;
             }
-            Err(err) => match *err.kind() {
+            Err(err) => match err.kind() {
                 ExpiredSignature => {
                     // If the jwt has expired do a refresh
                     do_refresh = true;
@@ -91,9 +69,7 @@ pub async fn auth_base(
                 _ => {
                     tracing::trace!(jwt_err = ?err, "invalid jwt encountered");
                     // Clear invalid tokens from cookies
-                    jar = jar
-                        .remove(removal_cookie("jwt"))
-                        .remove(removal_cookie("refresh"));
+                    jar = clear_cookie_jar(jar);
                     do_refresh = false;
                 }
             },
@@ -105,9 +81,8 @@ pub async fn auth_base(
             if let Some(refresh_token) =
                 RefreshToken::optional_find_by_token(&refresh, &gs.pool).await?
             {
-                let refresh_token = refresh_token.update_last_used(&gs.pool).await?;
-                let jwt = generate_jwt(&gs.jwt_encoding_key, refresh_token.user_id)?;
-                let jwt_cookie = build_cookie("jwt", jwt, Some(cookie::time::Duration::hours(1)));
+                let (jwt_cookie, refresh_token) =
+                    refresh_jwt_token(refresh_token, &gs.jwt_encoding_key, &gs.pool).await?;
                 jar = jar.add(jwt_cookie);
                 auth.user = Some(User::find_by_id(refresh_token.user_id, &gs.pool).await?);
                 tracing::trace!(user_id = refresh_token.user_id, "refreshed jwt");
@@ -117,9 +92,7 @@ pub async fn auth_base(
                     "expired jwt with refresh token cookie could not find refresh token in db"
                 );
                 // Clear invalid tokens from cookies
-                jar = jar
-                    .remove(removal_cookie("jwt"))
-                    .remove(removal_cookie("refresh"));
+                jar = clear_cookie_jar(jar);
             }
         } else {
             tracing::warn!(
@@ -127,9 +100,7 @@ pub async fn auth_base(
                 "expired jwt with invalid uuid as refresh token"
             );
             // Clear invalid tokens from cookies
-            jar = jar
-                .remove(removal_cookie("jwt"))
-                .remove(removal_cookie("refresh"));
+            jar = clear_cookie_jar(jar);
         }
     }
 

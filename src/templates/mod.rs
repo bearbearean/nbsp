@@ -3,8 +3,8 @@
 use askama::Template;
 
 use crate::{
-    auth::Auth,
     database::{NbspConfig, User},
+    jwt::auth::Auth,
     utilities::{LoginUserError, RegisterUserError},
 };
 
