@@ -36,14 +36,16 @@ pub mod templates;
 pub mod utilities;
 
 use crate::{
-    database::{Invite, NbspConfig, RefreshToken, User},
+    database::{Invite, NbspConfig, RefreshToken, User, UserInviteSettings},
     jwt::{
         auth::{Auth, auth_base, auth_not_allowed, auth_required},
         cookies::{COOKIE_REFRESH, COOKIE_REFRESH_MAX_AGE, build_cookie, clear_cookie_jar},
         generate_jwt_cookie,
     },
     prelude::*,
-    templates::{AccountLogin, AccountRegister, Homepage, HttpStatusPage, UserProfile},
+    templates::{
+        AccountInvites, AccountLogin, AccountRegister, Homepage, HttpStatusPage, UserProfile,
+    },
     utilities::{
         CustomMakeSpan, LoginUserError, RegisterUserError, hash_password, html, html_with_status,
         verify_password,
@@ -140,6 +142,10 @@ pub async fn main() -> Result<()> {
         ));
 
     let router_with_auth = Router::new()
+        .route(
+            "/account/invites",
+            routing::get(account_invites).post(do_account_invites),
+        )
         .route("/user/{username}", routing::get(user_profile))
         .layer(axum::middleware::from_fn_with_state(
             global_state.clone(),
@@ -552,4 +558,49 @@ pub fn start_refresh_tokens_cleaner(pool: PgPool) {
             tokio::time::sleep(tokio::time::Duration::from_hours(24)).await;
         }
     });
+}
+
+/// The route for `GET /account/invites`
+pub async fn account_invites(
+    State(gs): State<GlobalState>,
+    Extension(auth): Extension<Auth>,
+) -> WebResult {
+    let user_id = auth.user.as_ref().unwrap().user_id;
+    html(AccountInvites {
+        auth,
+        config: gs.config,
+        settings: UserInviteSettings::get_by_user_id(user_id, &gs.pool).await?,
+        invites: Invite::get_available_by_creator(user_id, &gs.pool).await?,
+    })
+}
+
+/// The route for `POST /account/invites`
+pub async fn do_account_invites(
+    State(gs): State<GlobalState>,
+    Extension(auth): Extension<Auth>,
+) -> WebResult {
+    let user_id = auth.user.as_ref().unwrap().user_id;
+    let user_invite_settings = UserInviteSettings::get_by_user_id(user_id, &gs.pool).await?;
+
+    if let Some((invite, user_invite_settings)) =
+        Invite::create_new_and_subtract_count(user_invite_settings, &gs.pool).await?
+    {
+        debug_assert_eq!(invite.user_creator_id, user_id);
+        debug_assert_eq!(user_invite_settings.user_id, user_id);
+        Ok(Redirect::to("/account/invites").into_response())
+    } else {
+        tracing::warn!(
+            user_id = user_id,
+            "user attempted to generate invite code without having available invite count"
+        );
+        html_with_status(
+            AccountInvites {
+                auth,
+                config: gs.config,
+                settings: UserInviteSettings::get_by_user_id(user_id, &gs.pool).await?,
+                invites: Invite::get_available_by_creator(user_id, &gs.pool).await?,
+            },
+            StatusCode::FORBIDDEN,
+        )
+    }
 }

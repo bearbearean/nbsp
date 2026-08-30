@@ -3,7 +3,7 @@
 use askama::Template;
 
 use crate::{
-    database::{NbspConfig, User},
+    database::{Invite, NbspConfig, User, UserInviteSettings},
     jwt::auth::Auth,
     utilities::{LoginUserError, RegisterUserError},
 };
@@ -66,4 +66,18 @@ pub struct UserProfile {
     pub auth: Auth,
     /// The user to view the profile of
     pub target_user: User,
+}
+
+/// The user profile template
+#[derive(Template)]
+#[template(path = "pages/user_invite_settings.html")]
+pub struct AccountInvites {
+    /// The [`NbspConfig`] for the instance
+    pub config: NbspConfig,
+    /// The authentication context, this contains the authenticated user
+    pub auth: Auth,
+    /// The user's invite settings
+    pub settings: UserInviteSettings,
+    /// The existing and not yet consumed invite codes created by the user
+    pub invites: Vec<Invite>,
 }

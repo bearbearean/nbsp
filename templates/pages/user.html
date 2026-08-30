@@ -16,6 +16,10 @@
 
   {% if let Some(auth_user) = auth.user && auth_user.is(&target_user) %}
   <p>
+    <a href="/account/invites">Manage your invite codes</a>
+  </p>
+
+  <p>
     <a href="/account/logout">Click here to log out</a>
   </p>
   {% endif %}

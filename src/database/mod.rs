@@ -8,12 +8,14 @@ mod config;
 mod invite;
 mod refresh_token;
 mod user;
+mod user_invite_settings;
 
 pub use crate::prelude::*;
 pub use config::NbspConfig;
 pub use invite::Invite;
 pub use refresh_token::RefreshToken;
 pub use user::User;
+pub use user_invite_settings::UserInviteSettings;
 
 /// Create the [`sqlx::PgPool`] and run the database migrations.
 pub async fn initialize() -> Result<PgPool> {
