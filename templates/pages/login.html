@@ -1,11 +1,9 @@
 {% extends "base.html" %}
 
+{% import "macros/header.html" as m_header %}
+
 {% block body %}
-<header class="container page-header">
-  <img class="logo" src="/assets/nbsp-logo.png" alt="nbsp">
-  <h1 class="title">{{ config.nbsp_community_title }}</h1>
-  <p class="subtitle">{{ config.nbsp_community_subtitle }}</p>
-</header>
+{{ m_header::page_header(config) }}
 
 <main class="container">
   <form action="/account/login{% if let Some(redirect) = redirect %}?redirect={{ redirect|urlencode }}{% endif %}" method="post" class="form">
