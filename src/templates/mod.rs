@@ -3,8 +3,9 @@
 use askama::Template;
 
 use crate::{
-    auth::Auth,
-    database::{NbspConfig, User},
+    database::{Invite, NbspConfig, User, UserInviteSettings},
+    jwt::auth::Auth,
+    utilities::{LoginUserError, RegisterUserError},
 };
 
 /// The homepage template
@@ -39,6 +40,8 @@ pub struct AccountRegister {
     pub config: NbspConfig,
     /// An invite code to prefill in the invite input
     pub prefilled_invite_code: Option<String>,
+    /// An optional error message to show as feedback for the user
+    pub form_error_message: Option<RegisterUserError>,
 }
 
 /// The account login template
@@ -49,6 +52,8 @@ pub struct AccountLogin {
     pub config: NbspConfig,
     /// The URL to redirect back to after login
     pub redirect: Option<String>,
+    /// An optional error message to show as feedback for the user
+    pub form_error_message: Option<LoginUserError>,
 }
 
 /// The user profile template
@@ -61,4 +66,18 @@ pub struct UserProfile {
     pub auth: Auth,
     /// The user to view the profile of
     pub target_user: User,
+}
+
+/// The user profile template
+#[derive(Template)]
+#[template(path = "pages/user_invite_settings.html")]
+pub struct AccountInvites {
+    /// The [`NbspConfig`] for the instance
+    pub config: NbspConfig,
+    /// The authentication context, this contains the authenticated user
+    pub auth: Auth,
+    /// The user's invite settings
+    pub settings: UserInviteSettings,
+    /// The existing and not yet consumed invite codes created by the user
+    pub invites: Vec<Invite>,
 }

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% import "macros/header.html" as m_header %}
+
+{% block body %}
+{{ m_header::page_header(config) }}
+
+{% set available_invites = settings.available_invite_count %}
+
+<main class="container">
+  <div class="form">
+    <h2>Manage your invites</h2>
+
+    <p>
+      {% if available_invites > &0 %}
+        You can create {{ available_invites }} more invite code{{ available_invites|pluralize }}.
+      {% else %}
+        You cannot create any more invite codes at this time.
+      {% endif %}
+    </p>
+
+    {% if available_invites > &0 %}
+      <form action="/account/invites" method="post">
+        <button class="submit" type="submit">Create a new code</button>
+      </form>
+    {% endif %}
+
+    {% if !invites.is_empty() %}
+      <div class="invite-codes-list">
+        {% for invite in invites %}
+          <div class="invite-code">
+            <p class="created-at">
+              Created on {{ invite.created_at.format("%B %e, %Y") }}
+            </p>
+            <p class="input">
+              {{- config.nbsp_base_url }}/account/register?invite={{ invite.invite_code -}}
+            </p>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+      <p>
+        <a href="/user/{{ auth.user.as_ref().unwrap().username }}">Back to your profile</a>
+      </p>
+    </div>
+</main>
+{% endblock %}

@@ -3,6 +3,8 @@
 use chrono::{DateTime, Utc};
 use sqlx::{PgPool, PgTransaction, prelude::FromRow, types::Uuid};
 
+use crate::database::UserInviteSettings;
+
 /// An invite to create a nbsp account with
 #[derive(FromRow)]
 pub struct Invite {
@@ -77,5 +79,63 @@ RETURNING *;
             .await?;
 
         Ok(invite)
+    }
+
+    /// Get all the available not yet consumed invite codes that were created by `user_creator_id`
+    pub async fn get_available_by_creator(
+        user_creator_id: i64,
+        pool: &PgPool,
+    ) -> sqlx::Result<Vec<Invite>> {
+        let query = r#"
+SELECT *
+FROM invites
+WHERE
+    user_creator_id = $1 AND
+    user_consumer_id IS NULL AND
+    consumed_at IS NULL
+ORDER BY created_at DESC;
+"#;
+        sqlx::query_as(query)
+            .bind(user_creator_id)
+            .fetch_all(pool)
+            .await
+    }
+
+    /// Create a new invite code for a user. This *does not* check if a user is allowed to create an
+    /// invite based on their `UserInviteSettings::available_invite_count`.
+    pub async fn create_new(
+        user_creator_id: i64,
+        txn: &mut PgTransaction<'_>,
+    ) -> sqlx::Result<Self> {
+        let query = "INSERT INTO invites (user_creator_id) VALUES ($1) RETURNING *;";
+        sqlx::query_as(query)
+            .bind(user_creator_id)
+            .fetch_one(txn.as_mut())
+            .await
+    }
+
+    /// Create a new invite code for a user and subtract 1 from their
+    /// `UserInviteSettings::available_invite_count`. This *does check* if the user has invite codes
+    /// left to generate or not and will return `None` if no code was generated.
+    pub async fn create_new_and_subtract_count(
+        user_invite_settings: UserInviteSettings,
+        pool: &PgPool,
+    ) -> sqlx::Result<Option<(Self, UserInviteSettings)>> {
+        if user_invite_settings.available_invite_count <= 0 {
+            return Ok(None);
+        }
+
+        let mut txn = pool.begin().await?;
+
+        let invite = Invite::create_new(user_invite_settings.user_id, &mut txn).await?;
+        let user_invite_settings = UserInviteSettings::save_invite_count(
+            user_invite_settings.setting_id,
+            user_invite_settings.available_invite_count - 1,
+            &mut txn,
+        )
+        .await?;
+
+        txn.commit().await?;
+        Ok(Some((invite, user_invite_settings)))
     }
 }

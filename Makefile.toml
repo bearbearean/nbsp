@@ -2,10 +2,15 @@
 clear = true
 env = { RUST_LOG = "trace" }
 script = "cargo run -q | hl --follow -x always"
+dependencies = ["pg-isready"]
 
 [tasks.make-pg-dir]
 command = "mkdir"
 args = ["-p", "podman/postgresql"]
+
+[tasks.pg-isready]
+command = "podman"
+args = ["exec", "-it", "nbsp-postgresql", "pg_isready", "-U", "nbsp"]
 
 [tasks.start-db]
 command = "podman"
