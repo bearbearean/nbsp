@@ -5,7 +5,7 @@
 {% block body %}
 {{ m_header::page_header(config) }}
 
-<main class="container">
+<main class="container section">
   <h2>{{ target_user.username }}</h2>
 
   <p>
@@ -13,6 +13,8 @@
   </p>
 
   {% if let Some(auth_user) = auth.user && auth_user.is(&target_user) %}
+  <div class="divider"></div>
+
   <p>
     <a href="/account/invites">Manage your invite codes</a>
   </p>
