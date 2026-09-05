@@ -1,7 +1,6 @@
 //! All axum routes under `/user/...`
 
 use axum::{
-    Extension,
     extract::{Path, State},
     http::HeaderMap,
 };
@@ -9,7 +8,7 @@ use axum::{
 use crate::{
     GlobalState,
     database::User,
-    jwt::auth::Auth,
+    jwt::auth::MustAuth,
     prelude::*,
     templates::{HttpStatusPage, UserProfile},
     utilities::{html, html_with_status},
@@ -18,13 +17,13 @@ use crate::{
 /// The route for `GET /user/{username}`
 pub async fn user_profile(
     State(gs): State<GlobalState>,
-    Extension(auth): Extension<Auth>,
+    auth: MustAuth,
     headers: HeaderMap,
     Path(username): Path<String>,
 ) -> WebResult {
     match User::optional_find_by_username(&username, &gs.pool).await? {
         Some(target_user) => html(UserProfile {
-            auth,
+            auth: auth.into_auth(),
             config: gs.config,
             target_user,
         }),

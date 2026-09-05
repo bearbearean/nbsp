@@ -1,8 +1,9 @@
 //! Axum middleware to facilitate authentication with encrypted cookies and JWTs
 
 use axum::{
-    Extension,
-    extract::{Request, State},
+    Extension, RequestPartsExt,
+    extract::{FromRequestParts, Request, State},
+    http::request::Parts,
     middleware::Next,
     response::{IntoResponse, Redirect},
 };
@@ -111,37 +112,91 @@ pub async fn auth_base(
     Ok((jar, response).into_response())
 }
 
-/// Middleware to require authentication. Unauthenticated requests will be redirected to
-/// `/account/login`
-pub async fn auth_required(
-    Extension(auth): Extension<Auth>,
-    request: Request,
-    next: Next,
-) -> impl IntoResponse {
-    if auth.user.is_some() {
-        next.run(request).await
-    } else {
-        let request_uri = request.uri().to_string();
-        let request_uri =
-            percent_encoding::utf8_percent_encode(&request_uri, percent_encoding::NON_ALPHANUMERIC);
-        let redirect_url = format!("/account/login?redirect={}", request_uri);
-        Redirect::to(&redirect_url).into_response()
+impl<S> FromRequestParts<S> for Auth
+where
+    S: Send + Sync,
+{
+    type Rejection = Response;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let Extension(auth) = parts
+            .extract::<Extension<Auth>>()
+            .await
+            .map_err(|err| err.into_response())?;
+
+        Ok(auth)
     }
 }
 
-/// Middleware to require that the user is *not* authenticated. Authenticated requests will be
-/// redirected to the home page.
-///
-/// This is useful for the registration and login pages, where if a user is already logged in they
-/// don't need to be able to register or login again. They should log out first
-pub async fn auth_not_allowed(
-    Extension(auth): Extension<Auth>,
-    request: Request,
-    next: Next,
-) -> impl IntoResponse {
-    if auth.user.is_none() {
-        next.run(request).await
-    } else {
-        Redirect::to("/").into_response()
+/// Authentication context for a request where the user *must* be authenticated
+#[derive(Clone)]
+pub struct MustAuth {
+    /// The definitely authenticated user
+    pub user: User,
+}
+
+impl MustAuth {
+    /// Turn a [`MustAuth`] into [`Auth`]
+    pub fn into_auth(self) -> Auth {
+        Auth {
+            user: Some(self.user),
+        }
+    }
+}
+
+impl<S> FromRequestParts<S> for MustAuth
+where
+    S: Send + Sync,
+{
+    type Rejection = Response;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let Extension(auth) = parts
+            .extract::<Extension<Auth>>()
+            .await
+            .map_err(|err| err.into_response())?;
+
+        if let Some(user) = auth.user {
+            Ok(Self { user })
+        } else {
+            let request_uri = parts.uri.to_string();
+            let request_uri = percent_encoding::utf8_percent_encode(
+                &request_uri,
+                percent_encoding::NON_ALPHANUMERIC,
+            );
+            let redirect_url = format!("/account/login?redirect={}", request_uri);
+            Err(Redirect::to(&redirect_url).into_response())
+        }
+    }
+}
+
+/// Authentication context for a request where the user *must not* be authenticated
+#[derive(Clone)]
+pub struct MustNotBeAuthed {}
+
+impl MustNotBeAuthed {
+    /// Turn a [`MustNotBeAuthed`] into [`Auth`]
+    pub fn into_auth(self) -> Auth {
+        Auth { user: None }
+    }
+}
+
+impl<S> FromRequestParts<S> for MustNotBeAuthed
+where
+    S: Send + Sync,
+{
+    type Rejection = Response;
+
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+        let Extension(auth) = parts
+            .extract::<Extension<Auth>>()
+            .await
+            .map_err(|err| err.into_response())?;
+
+        if auth.user.is_none() {
+            Ok(Self {})
+        } else {
+            Err(Redirect::to("/").into_response())
+        }
     }
 }

@@ -36,7 +36,7 @@ pub mod utilities;
 
 use crate::{
     database::{NbspConfig, RefreshToken},
-    jwt::auth::{auth_base, auth_not_allowed, auth_required},
+    jwt::auth::auth_base,
     prelude::*,
     routes::*,
     templates::HttpStatusPage,
@@ -137,11 +137,7 @@ pub async fn main() -> Result<()> {
             "/account/invites",
             routing::get(account_invites).post(do_account_invites),
         )
-        .route("/user/{username}", routing::get(user_profile))
-        .layer(axum::middleware::from_fn_with_state(
-            global_state.clone(),
-            auth_required,
-        ));
+        .route("/user/{username}", routing::get(user_profile));
 
     let router_without_auth = Router::new()
         .route(
@@ -151,11 +147,7 @@ pub async fn main() -> Result<()> {
         .route(
             "/account/login",
             routing::get(account_login).post(do_account_login),
-        )
-        .layer(axum::middleware::from_fn_with_state(
-            global_state.clone(),
-            auth_not_allowed,
-        ));
+        );
 
     let router_with_optional_auth = Router::new()
         .route("/", routing::get(root))

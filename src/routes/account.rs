@@ -1,7 +1,7 @@
 //! All axum routes under `/account/...`
 
 use axum::{
-    Extension, Form,
+    Form,
     extract::{Query, State},
     response::Redirect,
 };
@@ -13,7 +13,7 @@ use crate::{
     GlobalState,
     database::{Invite, RefreshToken, User, UserInviteSettings},
     jwt::{
-        auth::Auth,
+        auth::{MustAuth, MustNotBeAuthed},
         cookies::{COOKIE_REFRESH, COOKIE_REFRESH_MAX_AGE, build_cookie, clear_cookie_jar},
         generate_jwt_cookie,
     },
@@ -35,6 +35,7 @@ pub struct AccountRegisterQueryParams {
 /// The GET handler for `/account/register`
 pub async fn account_register(
     params: Query<AccountRegisterQueryParams>,
+    _auth: MustNotBeAuthed,
     State(gs): State<GlobalState>,
 ) -> WebResult {
     html(AccountRegister {
@@ -71,6 +72,7 @@ impl AccountRegisterForm {
 pub async fn do_account_register(
     State(gs): State<GlobalState>,
     jar: PrivateCookieJar,
+    _auth: MustNotBeAuthed,
     Form(form): Form<AccountRegisterForm>,
 ) -> WebResult {
     let err_status = StatusCode::UNPROCESSABLE_ENTITY;
@@ -132,13 +134,10 @@ pub async fn do_account_register(
 }
 
 /// The route for `GET /account/invites`
-pub async fn account_invites(
-    State(gs): State<GlobalState>,
-    Extension(auth): Extension<Auth>,
-) -> WebResult {
-    let user_id = auth.user.as_ref().unwrap().user_id;
+pub async fn account_invites(State(gs): State<GlobalState>, auth: MustAuth) -> WebResult {
+    let user_id = auth.user.user_id;
     html(AccountInvites {
-        auth,
+        auth: auth.into_auth(),
         config: gs.config,
         settings: UserInviteSettings::get_by_user_id(user_id, &gs.pool).await?,
         invites: Invite::get_available_by_creator(user_id, &gs.pool).await?,
@@ -156,6 +155,7 @@ pub struct AccountLoginQueryParams {
 pub async fn account_login(
     State(gs): State<GlobalState>,
     Query(params): Query<AccountLoginQueryParams>,
+    _auth: MustNotBeAuthed,
 ) -> WebResult {
     html(AccountLogin {
         config: gs.config,
@@ -178,6 +178,7 @@ pub async fn do_account_login(
     State(gs): State<GlobalState>,
     Query(params): Query<AccountLoginQueryParams>,
     jar: PrivateCookieJar,
+    _auth: MustNotBeAuthed,
     Form(form): Form<AccountLoginForm>,
 ) -> WebResult {
     let mut txn = gs.pool.begin().await?;
@@ -235,11 +236,8 @@ pub async fn account_logout(State(gs): State<GlobalState>, jar: PrivateCookieJar
 }
 
 /// The route for `POST /account/invites`
-pub async fn do_account_invites(
-    State(gs): State<GlobalState>,
-    Extension(auth): Extension<Auth>,
-) -> WebResult {
-    let user_id = auth.user.as_ref().unwrap().user_id;
+pub async fn do_account_invites(State(gs): State<GlobalState>, auth: MustAuth) -> WebResult {
+    let user_id = auth.user.user_id;
     let user_invite_settings = UserInviteSettings::get_by_user_id(user_id, &gs.pool).await?;
 
     if let Some((invite, user_invite_settings)) =
@@ -255,7 +253,7 @@ pub async fn do_account_invites(
         );
         html_with_status(
             AccountInvites {
-                auth,
+                auth: auth.into_auth(),
                 config: gs.config,
                 settings: UserInviteSettings::get_by_user_id(user_id, &gs.pool).await?,
                 invites: Invite::get_available_by_creator(user_id, &gs.pool).await?,
