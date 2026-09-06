@@ -1,7 +1,12 @@
-{% macro page_header(config) %}
+{% macro page_header(config, user: Option<User>) %}
 <header class="container page-header">
   <img class="logo" src="/assets/nbsp-logo.png" alt="nbsp">
   <h1 class="title">{{ config.nbsp_community_title }}</h1>
   <p class="subtitle">{{ config.nbsp_community_subtitle }}</p>
+  <p class="logged-in-user">
+  {% if let Some(user) = user %}
+    <a href="/user/{{ user.username }}">{{ user.username }}</a>
+  {% endif %}
+  </p>
 </header>
 {% endmacro %}
