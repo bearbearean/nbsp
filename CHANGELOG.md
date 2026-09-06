@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.0.5](https://github.com/bearbearean/nbsp/compare/v0.0.4...v0.0.5) - 2026-09-06
+
+### Added
+
+- align the user profile design with the forms ([#25](https://github.com/bearbearean/nbsp/pull/25))
+- add security policy
+- add invite code page for users ([#21](https://github.com/bearbearean/nbsp/pull/21))
+- add http_requests_duration_seconds prometheus metric ([#16](https://github.com/bearbearean/nbsp/pull/16))
+- automatically delete refresh tokens after 30 days ([#12](https://github.com/bearbearean/nbsp/pull/12))
+
+### Fixed
+
+- position the footer at the bottom everywhere
+- show feedback on erroneous form submits ([#17](https://github.com/bearbearean/nbsp/pull/17))
+- make all database migrations use if not exists and on conflict do nothing ([#19](https://github.com/bearbearean/nbsp/pull/19))
+
+### Other
+
+- point dependabot to the dev branch instead of main
+- add granting invites SQL snippets
+- implement FromRequestParts for all auth middleware ([#24](https://github.com/bearbearean/nbsp/pull/24))
+- moduralize the axum routes ([#23](https://github.com/bearbearean/nbsp/pull/23))
+- put the common <header> into a macro for easier re-use ([#22](https://github.com/bearbearean/nbsp/pull/22))
+- consolidate jwt and auth code into one module and clean it up ([#20](https://github.com/bearbearean/nbsp/pull/20))
+- *(dev)* add a pg-isready check before makers dev
+- lower jwt expiry to 15 minutes
+- start on development docs
+
 ## [0.0.4](https://github.com/bearbearean/nbsp/compare/v0.0.3...v0.0.4) - 2026-08-22
 
 ### Added

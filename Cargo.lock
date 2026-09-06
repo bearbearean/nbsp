@@ -1559,7 +1559,7 @@ dependencies = [
 
 [[package]]
 name = "nbsp"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
  "anyhow",
  "argon2",
