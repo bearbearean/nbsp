@@ -17,17 +17,19 @@
 <body {% block body_attr %}{% endblock %}>
   {% block body %}{% endblock %}
 
-  <footer class="container page-footer">
-    <p class="slogan">
-      <a href="https://nbsp.bearbearean.dev" target="_blank">
-        <b>non-breaking space</b><br>a thoughtful community forum platform
-      </a>
-    </p>
-    <p class="version">
-      <a href="https://github.com/bearbearean/nbsp/releases/tag/v{{ env!("CARGO_PKG_VERSION") }}" target="_blank">
-        v{{ env!("CARGO_PKG_VERSION") }}
-      </a>
-    </p>
+  <footer class="page-footer">
+    <div class="container page-footer-inner">
+      <p class="slogan">
+        <a href="https://nbsp.bearbearean.dev" target="_blank">
+          <b>non-breaking space</b><br>a thoughtful community forum platform
+        </a>
+      </p>
+      <p class="version">
+        <a href="https://github.com/bearbearean/nbsp/releases/tag/v{{ env!("CARGO_PKG_VERSION") }}" target="_blank">
+          v{{ env!("CARGO_PKG_VERSION") }}
+        </a>
+      </p>
+    </div>
   </footer>
 
   {#- Keep this as last in the body #}

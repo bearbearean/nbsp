@@ -1,4 +1,4 @@
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
     token_id BIGINT NOT NULL GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id BIGINT NOT NULL REFERENCES users(user_id),
     refresh_token UUID UNIQUE NOT NULL DEFAULT (uuid_generate_v4()),

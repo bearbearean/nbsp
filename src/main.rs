@@ -2,22 +2,19 @@
 //!
 //! > non-breaking space: a thoughtful community forum platform
 
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc, time::Instant};
 
 use axum::{
-    Extension, Form, Router,
-    extract::{FromRef, MatchedPath, Path, Query, Request, State},
+    Router,
+    extract::{FromRef, MatchedPath, Request, State},
     http::HeaderMap,
     middleware::Next,
     response::Redirect,
     routing,
 };
-use axum_extra::extract::{PrivateCookieJar, cookie::Key};
-use cookie::time::Duration;
+use axum_extra::extract::cookie::Key;
 use jsonwebtoken::{DecodingKey, EncodingKey};
-use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
-use serde::Deserialize;
-use sqlx::types::Uuid;
+use metrics_exporter_prometheus::{Matcher, PrometheusBuilder, PrometheusHandle};
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -30,21 +27,20 @@ use tower_http::{
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, layer::SubscriberExt, util::SubscriberInitExt};
 
-pub mod auth;
 pub mod database;
+pub mod jwt;
 pub mod prelude;
+pub mod routes;
 pub mod templates;
 pub mod utilities;
 
 use crate::{
-    auth::{Auth, auth_base, auth_not_allowed, auth_required, generate_jwt},
-    database::{Invite, NbspConfig, RefreshToken, User},
+    database::{NbspConfig, RefreshToken},
+    jwt::auth::auth_base,
     prelude::*,
-    templates::{AccountLogin, AccountRegister, Homepage, HttpStatusPage, UserProfile},
-    utilities::{
-        CustomMakeSpan, build_cookie, hash_password, html, html_with_status, removal_cookie,
-        verify_password,
-    },
+    routes::*,
+    templates::HttpStatusPage,
+    utilities::{CustomMakeSpan, html_with_status},
 };
 
 /// The struct for [`axum::extract::State`] with all global state
@@ -137,11 +133,11 @@ pub async fn main() -> Result<()> {
         ));
 
     let router_with_auth = Router::new()
-        .route("/user/{username}", routing::get(user_profile))
-        .layer(axum::middleware::from_fn_with_state(
-            global_state.clone(),
-            auth_required,
-        ));
+        .route(
+            "/account/invites",
+            routing::get(account_invites).post(do_account_invites),
+        )
+        .route("/user/{username}", routing::get(user_profile));
 
     let router_without_auth = Router::new()
         .route(
@@ -151,11 +147,7 @@ pub async fn main() -> Result<()> {
         .route(
             "/account/login",
             routing::get(account_login).post(do_account_login),
-        )
-        .layer(axum::middleware::from_fn_with_state(
-            global_state.clone(),
-            auth_not_allowed,
-        ));
+        );
 
     let router_with_optional_auth = Router::new()
         .route("/", routing::get(root))
@@ -200,6 +192,8 @@ pub async fn main() -> Result<()> {
         });
     }
 
+    start_refresh_tokens_cleaner(pool.clone());
+
     let listener = TcpListener::bind("127.0.0.1:3000")
         .await
         .context("failed to bind 127.0.0.1:3000, is the port already in use?")?;
@@ -214,14 +208,6 @@ pub async fn main() -> Result<()> {
     .context("failed to serve nbsp on http://127.0.0.1:3000")?;
 
     Ok(())
-}
-
-/// The route for `GET /` (the home page)
-pub async fn root(State(gs): State<GlobalState>, Extension(auth): Extension<Auth>) -> WebResult {
-    html(Homepage {
-        config: gs.config,
-        auth,
-    })
 }
 
 /// The fallback route when no other routes match (ie. HTTP 404)
@@ -259,104 +245,6 @@ pub async fn permanent_redirects(request: Request) -> WebResult {
     Ok((Redirect::permanent(location)).into_response())
 }
 
-/// Query parameters for `GET /account/register`
-#[derive(Deserialize)]
-pub struct AccountRegisterQueryParams {
-    /// An optional invite code to prefill in the account registration form
-    pub invite: Option<String>,
-}
-
-/// The GET handler for `/account/register`
-pub async fn account_register(
-    params: Query<AccountRegisterQueryParams>,
-    State(gs): State<GlobalState>,
-) -> WebResult {
-    html(AccountRegister {
-        config: gs.config,
-        prefilled_invite_code: params.0.invite,
-    })
-}
-
-/// Expected input form for `POST /account/register`
-#[derive(Deserialize)]
-pub struct AccountRegisterForm {
-    /// Value of the username form input
-    pub username: String,
-    /// Value of the password form input
-    pub password: String,
-    /// Value of the confirm_password form input
-    pub confirm_password: String,
-    /// Value of the invite form input
-    pub invite: String,
-}
-
-impl AccountRegisterForm {
-    /// Validate an account registration form input matches all the expected formats
-    pub fn validate(&self) -> bool {
-        self.password == self.confirm_password
-            && User::validate_username(&self.username)
-            && User::validate_password(&self.password)
-            && Invite::validate_invite(&self.invite)
-    }
-}
-
-/// The POST handler for `/account/register`
-pub async fn do_account_register(
-    State(gs): State<GlobalState>,
-    jar: PrivateCookieJar,
-    Form(form): Form<AccountRegisterForm>,
-) -> WebResult {
-    let err_status = StatusCode::UNPROCESSABLE_ENTITY;
-    let template = AccountRegister {
-        config: gs.config,
-        prefilled_invite_code: Some(form.invite.clone()),
-    };
-
-    let invite = match Uuid::try_parse(&form.invite) {
-        Ok(invite) => invite,
-        Err(_) => return html_with_status(template, err_status),
-    };
-
-    let form_is_valid = form.validate();
-    if !form_is_valid {
-        tracing::info!("attempted user registration with invalid form details");
-        return html_with_status(template, err_status);
-    }
-
-    let username_is_available = User::is_username_available(&form.username, &gs.pool).await?;
-    if !username_is_available {
-        tracing::info!("attempted user registration with existing username");
-        return html_with_status(template, err_status);
-    }
-
-    let invite_is_available = Invite::is_invite_available(&invite, &gs.pool).await?;
-    if !invite_is_available {
-        tracing::info!("attempted user registration with unavailable invite code");
-        return html_with_status(template, err_status);
-    }
-
-    if form_is_valid && username_is_available && invite_is_available {
-        let password_hash = hash_password(form.password.as_bytes())?;
-        let (user, refresh_token) =
-            User::register_account(&form.username, &password_hash, &invite, &gs.pool).await?;
-        let jwt = generate_jwt(&gs.jwt_encoding_key, user.user_id)?;
-        let jwt_cookie = build_cookie("jwt", jwt, Some(Duration::hours(1)));
-        let refresh_cookie = build_cookie(
-            "refresh",
-            refresh_token.refresh_token.to_string(),
-            Some(Duration::days(30)),
-        );
-
-        Ok((
-            jar.add(jwt_cookie).add(refresh_cookie),
-            Redirect::to(&format!("/user/{}", user.username)),
-        )
-            .into_response())
-    } else {
-        html_with_status(template, err_status)
-    }
-}
-
 // Tell `PrivateCookieJar` how to access the cookies encryption key from `GlobalState`
 impl FromRef<GlobalState> for Key {
     fn from_ref(gs: &GlobalState) -> Self {
@@ -364,130 +252,9 @@ impl FromRef<GlobalState> for Key {
     }
 }
 
-/// Query parameters for `/account/login`
-#[derive(Deserialize)]
-pub struct AccountLoginQueryParams {
-    /// An optional URL to redirect back to after the login is done
-    pub redirect: Option<String>,
-}
-
-/// The GET handler for `/account/login`
-pub async fn account_login(
-    State(gs): State<GlobalState>,
-    Query(params): Query<AccountLoginQueryParams>,
-) -> WebResult {
-    html(AccountLogin {
-        config: gs.config,
-        redirect: params.redirect,
-    })
-}
-
-/// Expected input form for `POST /account/login`
-#[derive(Deserialize)]
-pub struct AccountLoginForm {
-    /// Value of the username form input
-    pub username: String,
-    /// Value of the password form input
-    pub password: String,
-}
-
-/// The POST handler for `/account/login`
-pub async fn do_account_login(
-    State(gs): State<GlobalState>,
-    Query(params): Query<AccountLoginQueryParams>,
-    jar: PrivateCookieJar,
-    Form(form): Form<AccountLoginForm>,
-) -> WebResult {
-    let mut txn = gs.pool.begin().await?;
-    let err_template = html_with_status(
-        AccountLogin {
-            config: gs.config,
-            redirect: params.redirect.clone(),
-        },
-        StatusCode::UNAUTHORIZED,
-    );
-
-    let user = match User::optional_find_by_username(&form.username, &gs.pool).await? {
-        Some(user) => user,
-        None => {
-            return err_template;
-        }
-    };
-
-    if !verify_password(form.password.as_bytes(), user.password_hash.as_deref())? {
-        return err_template;
-    }
-
-    let jwt = generate_jwt(&gs.jwt_encoding_key, user.user_id).map_err(WebError::Jwt)?;
-    let jwt_cookie = build_cookie("jwt", jwt, Some(Duration::hours(1)));
-
-    let refresh_token = RefreshToken::new_for_user(user.user_id, &mut txn).await?;
-    let refresh_cookie = build_cookie(
-        "refresh",
-        refresh_token.refresh_token.to_string(),
-        Some(Duration::days(30)),
-    );
-
-    txn.commit().await?;
-
-    let redirect_url = match params.redirect {
-        Some(redirect) => redirect,
-        None => format!("/user/{}", user.username),
-    };
-
-    Ok((
-        jar.add(jwt_cookie).add(refresh_cookie),
-        Redirect::to(&redirect_url),
-    )
-        .into_response())
-}
-
-/// The route for `GET /user/{username}`
-pub async fn user_profile(
-    State(gs): State<GlobalState>,
-    Extension(auth): Extension<Auth>,
-    headers: HeaderMap,
-    Path(username): Path<String>,
-) -> WebResult {
-    match User::optional_find_by_username(&username, &gs.pool).await? {
-        Some(target_user) => html(UserProfile {
-            auth,
-            config: gs.config,
-            target_user,
-        }),
-        None => html_with_status(
-            HttpStatusPage {
-                config: gs.config,
-                title: "User not found - HTTP 404",
-                description: "There doesn't seem to be anyone by that username.",
-                x_request_id: headers
-                    .get("x-request-id")
-                    .and_then(|value| value.to_str().ok())
-                    .unwrap_or(""),
-            },
-            StatusCode::NOT_FOUND,
-        ),
-    }
-}
-
-/// The route for `GET /account/logout`
-pub async fn account_logout(State(gs): State<GlobalState>, jar: PrivateCookieJar) -> WebResult {
-    // If there is a refresh token in the cookies then delete that token from the database
-    if let Some(Ok(refresh)) = jar
-        .get("refresh")
-        .map(|refresh| Uuid::try_parse(refresh.value()))
-    {
-        RefreshToken::optional_delete(&refresh, &gs.pool).await?;
-    }
-
-    let jar = jar
-        .remove(removal_cookie("jwt"))
-        .remove(removal_cookie("refresh"));
-    Ok((jar, Redirect::to("/")).into_response())
-}
-
 /// Prometheus metrics for HTTP requests
 pub async fn http_metrics(request: Request, next: Next) -> impl IntoResponse {
+    let start = Instant::now();
     let method = request.method().clone().to_string();
     // Use MatchedPath so we get "/user/{username}" as the path instead of actual usernames
     let path = if let Some(matched_path) = request.extensions().get::<MatchedPath>() {
@@ -497,18 +264,29 @@ pub async fn http_metrics(request: Request, next: Next) -> impl IntoResponse {
     };
 
     let response = next.run(request).await;
+    let latency = start.elapsed().as_secs_f64();
 
     let status = response.status().as_u16().to_string();
     let labels = [("method", method), ("path", path), ("status", status)];
 
     metrics::counter!("http_requests_total", &labels).increment(1);
+    metrics::histogram!("http_requests_duration_seconds", &labels).record(latency);
 
     response
 }
 
 /// Create and start the metrics recorder
 pub fn start_metrics_recorder() -> PrometheusHandle {
+    const EXPONENTIAL_SECONDS: &[f64] = &[
+        0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0,
+    ];
+
     let recorder = PrometheusBuilder::new()
+        .set_buckets_for_metric(
+            Matcher::Full("http_requests_duration_seconds".to_string()),
+            EXPONENTIAL_SECONDS,
+        )
+        .unwrap()
         .install_recorder()
         .expect("failed to start metrics recorder");
 
@@ -521,4 +299,15 @@ pub fn start_metrics_recorder() -> PrometheusHandle {
     });
 
     recorder
+}
+
+/// Starts the background task to automatically clean up inactive refresh tokens
+pub fn start_refresh_tokens_cleaner(pool: PgPool) {
+    tokio::spawn(async move {
+        tracing::info!("starting refresh tokens cleaner background task");
+        loop {
+            RefreshToken::clean_inactive(&pool).await;
+            tokio::time::sleep(tokio::time::Duration::from_hours(24)).await;
+        }
+    });
 }

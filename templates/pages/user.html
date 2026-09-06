@@ -1,13 +1,11 @@
 {% extends "base.html" %}
 
-{% block body %}
-<header class="container page-header">
-  <img class="logo" src="/assets/nbsp-logo.png" alt="nbsp">
-  <h1 class="title">{{ config.nbsp_community_title }}</h1>
-  <p class="subtitle">{{ config.nbsp_community_subtitle }}</p>
-</header>
+{% import "macros/header.html" as m_header %}
 
-<main class="container">
+{% block body %}
+{{ m_header::page_header(config) }}
+
+<main class="container section">
   <h2>{{ target_user.username }}</h2>
 
   <p>
@@ -15,6 +13,12 @@
   </p>
 
   {% if let Some(auth_user) = auth.user && auth_user.is(&target_user) %}
+  <div class="divider"></div>
+
+  <p>
+    <a href="/account/invites">Manage your invite codes</a>
+  </p>
+
   <p>
     <a href="/account/logout">Click here to log out</a>
   </p>
