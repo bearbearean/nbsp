@@ -30,7 +30,7 @@ body {
 .page-header {
   display: grid;
   column-gap: 1rem;
-  grid-template-columns: min-content auto;
+  grid-template-columns: min-content auto max-content;
   grid-template-rows: auto auto;
   margin-bottom: 10px;
   margin-top: 10px;
@@ -51,6 +51,13 @@ body {
   .subtitle {
     align-self: flex-start;
     font-size: 1.6rem;
+  }
+
+  .logged-in-user {
+    align-content: center;
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    text-align: right;
   }
 }
 

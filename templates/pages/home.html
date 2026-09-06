@@ -3,7 +3,7 @@
 {% import "macros/header.html" as m_header %}
 
 {% block body %}
-{{ m_header::page_header(config) }}
+{{ m_header::page_header(config, auth.user) }}
 
 <main class="container">
   {% if let Some(notice) = config.nbsp_homepage_notice %}
