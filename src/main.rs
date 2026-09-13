@@ -36,7 +36,7 @@ pub mod utilities;
 
 use crate::{
     database::{NbspConfig, RefreshToken},
-    jwt::auth::auth_base,
+    jwt::auth::{Auth, auth_base},
     prelude::*,
     routes::*,
     templates::HttpStatusPage,
@@ -151,7 +151,8 @@ pub async fn main() -> Result<()> {
 
     let router_with_optional_auth = Router::new()
         .route("/", routing::get(root))
-        .route("/account/logout", routing::get(account_logout));
+        .route("/account/logout", routing::get(account_logout))
+        .route("/account/profile", routing::get(permanent_redirects));
 
     let router = Router::new()
         .merge(router_with_optional_auth)
@@ -229,9 +230,17 @@ pub async fn fallback_http_404(headers: HeaderMap, State(gs): State<GlobalState>
 }
 
 /// A generic handler for any permanent redirects we may want
-pub async fn permanent_redirects(request: Request) -> WebResult {
+pub async fn permanent_redirects(auth: Auth, request: Request) -> WebResult {
     let location = match request.uri().path() {
         "/robots.txt" => "/assets/robots.txt",
+        "/account/profile" => match auth.user {
+            Some(user) => {
+                return Ok((Redirect::to(&format!("/user/{}", user.username))).into_response());
+            }
+            None => {
+                return Ok(Redirect::to("/account/login?redirect=/account/profile").into_response());
+            }
+        },
         _ => {
             // In theory this branch of the match could never be triggered because all the routes
             // that use this handler have to manually be added. So treat any other request we get

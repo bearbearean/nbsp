@@ -3,7 +3,7 @@
 {% import "macros/header.html" as m_header %}
 
 {% block body %}
-{{ m_header::page_header(config) }}
+{{ m_header::page_header(config, auth.user) }}
 
 {% set available_invites = settings.available_invite_count %}
 

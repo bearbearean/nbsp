@@ -30,10 +30,22 @@ body {
 .page-header {
   display: grid;
   column-gap: 1rem;
-  grid-template-columns: min-content auto;
-  grid-template-rows: auto auto;
+  grid-template-columns: max-content auto;
   margin-bottom: 10px;
   margin-top: 10px;
+
+  .logo-title-subtitle {
+    display: grid;
+    color: #ffffff;
+    column-gap: 1rem;
+    grid-template-columns: min-content auto;
+    grid-template-rows: auto auto;
+    text-decoration: none;
+
+    &:hover .logo {
+      box-shadow: 0 0 4px 0px #a2a2a2;
+    }
+  }
 
   .logo {
     align-self: center;
@@ -51,6 +63,11 @@ body {
   .subtitle {
     align-self: flex-start;
     font-size: 1.6rem;
+  }
+
+  .logged-in-user {
+    align-content: center;
+    text-align: right;
   }
 }
 
