@@ -34,6 +34,9 @@ pub mod routes;
 pub mod templates;
 pub mod utilities;
 
+#[cfg(test)]
+mod tests;
+
 use crate::{
     database::{NbspConfig, RefreshToken},
     jwt::auth::{Auth, auth_base},
@@ -81,12 +84,52 @@ pub async fn main() -> Result<()> {
     // Keep this log as an indicator when nbsp has initially started
     tracing::info!("non-breaking space: a thoughtful community forum platform");
 
-    let pool = crate::database::initialize()
+    let pool = crate::database::initialize(None)
         .await
         .context("failed to connect to PostgreSQL, check the NBSP_PG_... environment variables")?;
     let config = NbspConfig::load(&pool)
         .await
         .context("failed to load NbspConfig, check the nbsp_config table in PostgreSQL")?;
+
+    let router = create_nbsp_router(&pool, &config).await;
+
+    if config.nbsp_enable_prometheus_metrics {
+        let recorder = start_metrics_recorder();
+        let metrics_router =
+            Router::new().route("/metrics", routing::get(async move || recorder.render()));
+        let metrics_listener = TcpListener::bind("127.0.0.1:3001")
+            .await
+            .context("failed to bind 127.0.0.1:3001, is the port already in use?")?;
+
+        tokio::spawn(async {
+            tracing::info!("metrics listening on http://127.0.0.1:3001");
+            axum::serve(metrics_listener, metrics_router)
+                .await
+                .context("failed to serve metrics on http://127.0.0.1:3001")
+                .unwrap()
+        });
+    }
+
+    start_refresh_tokens_cleaner(pool.clone());
+
+    let listener = TcpListener::bind("127.0.0.1:3000")
+        .await
+        .context("failed to bind 127.0.0.1:3000, is the port already in use?")?;
+
+    tracing::info!("listening on http://127.0.0.1:3000");
+
+    axum::serve(
+        listener,
+        router.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .context("failed to serve nbsp on http://127.0.0.1:3000")?;
+
+    Ok(())
+}
+
+/// Create the axum [`Router`] for nbsp
+pub async fn create_nbsp_router(pool: &PgPool, config: &NbspConfig) -> Router {
     let cookies_key = config.nbsp_cookies_key.clone();
     let jwt_encoding_key = EncodingKey::from_secret(config.nbsp_jwt_signing_key.as_bytes());
     let jwt_decoding_key = DecodingKey::from_secret(config.nbsp_jwt_signing_key.as_bytes());
@@ -171,44 +214,10 @@ pub async fn main() -> Result<()> {
         router
     };
 
-    let router = router
+    router
         .layer(services)
         .nest("/assets", memory_serve::load!().into_router())
-        .with_state(global_state);
-
-    if config.nbsp_enable_prometheus_metrics {
-        let recorder = start_metrics_recorder();
-        let metrics_router =
-            Router::new().route("/metrics", routing::get(async move || recorder.render()));
-        let metrics_listener = TcpListener::bind("127.0.0.1:3001")
-            .await
-            .context("failed to bind 127.0.0.1:3001, is the port already in use?")?;
-
-        tokio::spawn(async {
-            tracing::info!("metrics listening on http://127.0.0.1:3001");
-            axum::serve(metrics_listener, metrics_router)
-                .await
-                .context("failed to serve metrics on http://127.0.0.1:3001")
-                .unwrap()
-        });
-    }
-
-    start_refresh_tokens_cleaner(pool.clone());
-
-    let listener = TcpListener::bind("127.0.0.1:3000")
-        .await
-        .context("failed to bind 127.0.0.1:3000, is the port already in use?")?;
-
-    tracing::info!("listening on http://127.0.0.1:3000");
-
-    axum::serve(
-        listener,
-        router.into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .await
-    .context("failed to serve nbsp on http://127.0.0.1:3000")?;
-
-    Ok(())
+        .with_state(global_state)
 }
 
 /// The fallback route when no other routes match (ie. HTTP 404)
