@@ -15,14 +15,36 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: nbsp
+          POSTGRES_PASSWORD: nbsp
+          POSTGRES_DB: nbsp
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        volumes:
+        - "/var/run/postgresql:/var/run/postgresql"
     steps:
-    - uses: actions/checkout@v7
-    - uses: dtolnay/rust-toolchain@v1
+    - name: Checkout repository
+      uses: actions/checkout@v7
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@v1
       with:
         toolchain: stable
+    - name: Install nextest
+      uses: taiki-e/install-action@v2
+      with:
+        tool: nextest
     - name: Cache Rust dependencies
       uses: Swatinem/rust-cache@v2
     - name: Build
       run: cargo build --verbose
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo nextest run --verbose
+      env:
+        NBSP_PG_HOST: "/var/run/postgresql"
