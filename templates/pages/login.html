@@ -3,7 +3,7 @@
 {% import "macros/header.html" as m_header %}
 
 {% block body %}
-{{ m_header::page_header(config) }}
+{{ m_header::page_header(config, None) }}
 
 <main class="container">
   <form action="/account/login{% if let Some(redirect) = redirect %}?redirect={{ redirect|urlencode }}{% endif %}" method="post" class="form">

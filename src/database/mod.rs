@@ -6,6 +6,7 @@ use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
 
 mod config;
 mod invite;
+mod post;
 mod refresh_token;
 mod user;
 mod user_invite_settings;
@@ -13,12 +14,13 @@ mod user_invite_settings;
 pub use crate::prelude::*;
 pub use config::NbspConfig;
 pub use invite::Invite;
+pub use post::Post;
 pub use refresh_token::RefreshToken;
 pub use user::User;
 pub use user_invite_settings::UserInviteSettings;
 
 /// Create the [`sqlx::PgPool`] and run the database migrations.
-pub async fn initialize() -> Result<PgPool> {
+pub async fn initialize(db_name_override: Option<String>) -> Result<PgPool> {
     let mut conn_opts = PgConnectOptions::new();
 
     #[cfg(debug_assertions)]
@@ -56,6 +58,10 @@ pub async fn initialize() -> Result<PgPool> {
 
     if let Ok(port) = std::env::var("NBSP_PG_PORT") {
         conn_opts = conn_opts.port(port.parse().context("NBSP_PG_PORT must be a u16")?);
+    }
+
+    if let Some(db_name_override) = db_name_override {
+        conn_opts = conn_opts.database(&db_name_override);
     }
 
     let pool_opts = PgPoolOptions::new().acquire_timeout(Duration::from_secs(5));

@@ -5,7 +5,7 @@ use askama::Template;
 use crate::{
     database::{Invite, NbspConfig, User, UserInviteSettings},
     jwt::auth::Auth,
-    utilities::{LoginUserError, RegisterUserError},
+    utilities::{LoginUserError, PostNewError, RegisterUserError},
 };
 
 /// The homepage template
@@ -80,4 +80,20 @@ pub struct AccountInvites {
     pub settings: UserInviteSettings,
     /// The existing and not yet consumed invite codes created by the user
     pub invites: Vec<Invite>,
+}
+
+/// The user profile template
+#[derive(Template)]
+#[template(path = "pages/post_new.html")]
+pub struct PostNew {
+    /// The [`NbspConfig`] for the instance
+    pub config: NbspConfig,
+    /// The authentication context, this contains the authenticated user
+    pub auth: Auth,
+    /// An optional error message to show as feedback for the user
+    pub form_error_message: Option<PostNewError>,
+    /// A title to prefill in the title input
+    pub prefilled_title: Option<String>,
+    /// A Markdown body to prefill in the body textarea
+    pub prefilled_markdown: Option<String>,
 }
