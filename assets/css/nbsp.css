@@ -178,6 +178,11 @@ body {
       &:invalid {
         border-color: #ff4107bb;
       }
+
+      &.textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
     }
   }
 
