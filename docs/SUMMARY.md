@@ -12,3 +12,4 @@
   * [Database tips](./administration/database-tips/README.md)
 * [Development](./development/README.md)
 * [Instances](./instances/README.md)
+* [Code of Conduct](./code-of-conduct/README.md)
