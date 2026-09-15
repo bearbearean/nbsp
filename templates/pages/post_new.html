@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% import "macros/header.html" as m_header %}
+
+{% block body %}
+{{ m_header::page_header(config, auth.user) }}
+
+<main class="container">
+  <form action="/post/new" method="post" class="form">
+    <h2>Create a new post</h2>
+
+    {% if let Some(error_message) = form_error_message %}
+      <div class="error-message">
+        <p>{{ error_message }}</p>
+      </div>
+    {% endif %}
+
+    <div class="label-input">
+      <label class="label" for="title">Title</label>
+      <input class="input" type="text" name="title" id="title" required {% if let Some(prefilled_title) = prefilled_title %}value="{{ prefilled_title }}"{% endif %}>
+    </div>
+
+    <div class="label-input">
+      <label class="label" for="markdown">Body (Markdown)</label>
+      <textarea class="input textarea" name="markdown" id="markdown" required>{% if let Some(prefilled_markdown) = prefilled_markdown %}{{ prefilled_markdown }}{% endif %}</textarea>
+    </div>
+
+    <div>
+      <button class="submit" type="submit">Create post</button>
+    </div>
+  </form>
+</main>
+{% endblock %}
