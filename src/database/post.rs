@@ -64,4 +64,16 @@ RETURNING *;
             .fetch_one(pool)
             .await
     }
+
+    /// Find a post by its `post_id`, returning `None` if it cannot be found
+    pub async fn optional_find_by_post_id(
+        post_id: i64,
+        pool: &PgPool,
+    ) -> sqlx::Result<Option<Self>> {
+        let query = "SELECT * FROM posts WHERE post_id = $1;";
+        sqlx::query_as(query)
+            .bind(post_id)
+            .fetch_optional(pool)
+            .await
+    }
 }

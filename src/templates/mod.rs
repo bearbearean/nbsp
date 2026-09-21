@@ -3,7 +3,7 @@
 use askama::Template;
 
 use crate::{
-    database::{Invite, NbspConfig, User, UserInviteSettings},
+    database::{Invite, NbspConfig, Post, User, UserInviteSettings},
     jwt::auth::Auth,
     utilities::{LoginUserError, PostNewError, RegisterUserError},
 };
@@ -96,4 +96,18 @@ pub struct PostNew {
     pub prefilled_title: Option<String>,
     /// A Markdown body to prefill in the body textarea
     pub prefilled_markdown: Option<String>,
+}
+
+/// The post view template
+#[derive(Template)]
+#[template(path = "pages/post_view.html")]
+pub struct PostView {
+    /// The [`NbspConfig`] for the instance
+    pub config: NbspConfig,
+    /// The authentication context, this contains the authenticated user
+    pub auth: Auth,
+    /// The post to view
+    pub post: Post,
+    /// The username of the creator of the post
+    pub post_creator_username: String,
 }

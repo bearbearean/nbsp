@@ -181,7 +181,8 @@ pub async fn create_nbsp_router(pool: &PgPool, config: &NbspConfig) -> Router {
             routing::get(account_invites).post(do_account_invites),
         )
         .route("/user/{username}", routing::get(user_profile))
-        .route("/post/new", routing::get(post_new).post(do_post_new));
+        .route("/post/new", routing::get(post_new).post(do_post_new))
+        .route("/post/view/{post_id}", routing::get(post_view));
 
     let router_without_auth = Router::new()
         .route(

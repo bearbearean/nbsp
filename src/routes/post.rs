@@ -1,14 +1,19 @@
 //! All axum routes under `/post/...`
 
-use axum::{Form, extract::State, response::Redirect};
+use axum::{
+    Form,
+    extract::{Path, State},
+    http::HeaderMap,
+    response::Redirect,
+};
 use serde::Deserialize;
 
 use crate::{
     GlobalState,
-    database::Post,
+    database::{Post, User},
     jwt::auth::MustAuth,
     prelude::*,
-    templates::PostNew,
+    templates::{HttpStatusPage, PostNew, PostView},
     utilities::{PostNewError, html, html_with_status, render_markdown},
 };
 
@@ -71,4 +76,36 @@ pub async fn do_post_new(
 
     let post_url = format!("/post/view/{}", post.post_id);
     Ok(Redirect::to(&post_url).into_response())
+}
+
+/// The route for `GET /post/view/{post_id}`
+pub async fn post_view(
+    State(gs): State<GlobalState>,
+    auth: MustAuth,
+    headers: HeaderMap,
+    Path(post_id): Path<i64>,
+) -> WebResult {
+    match Post::optional_find_by_post_id(post_id, &gs.pool).await? {
+        Some(post) => {
+            let post_creator_username = User::get_username(post.creator_user_id, &gs.pool).await?;
+            html(PostView {
+                auth: auth.into_auth(),
+                config: gs.config,
+                post,
+                post_creator_username,
+            })
+        }
+        None => html_with_status(
+            HttpStatusPage {
+                config: gs.config,
+                title: "Post not found - HTTP 404",
+                description: "There doesn't seem to be a post by that ID.",
+                x_request_id: headers
+                    .get("x-request-id")
+                    .and_then(|value| value.to_str().ok())
+                    .unwrap_or(""),
+            },
+            StatusCode::NOT_FOUND,
+        ),
+    }
 }
