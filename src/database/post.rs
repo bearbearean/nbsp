@@ -77,3 +77,34 @@ RETURNING *;
             .await
     }
 }
+
+/// A minimal representation of [`Post`] that only contains the necessary information to show posts
+/// in a list
+#[derive(FromRow)]
+pub struct PostListItem {
+    /// The ID of the post (primary key)
+    pub post_id: i64,
+    /// The username of the creator of the post
+    pub creator_username: String,
+    /// The timestamp when the post was created
+    pub created_at: DateTime<Utc>,
+    /// The plaintext title of the post
+    pub title: String,
+}
+
+impl PostListItem {
+    /// Get the 25 most recently posted posts
+    pub async fn get_recent_25(pool: &PgPool) -> sqlx::Result<Vec<Self>> {
+        let query = r#"
+SELECT
+    p.post_id,
+    p.created_at,
+    p.title,
+    u.username creator_username
+FROM posts p
+JOIN users u ON p.creator_user_id = u.user_id
+ORDER BY p.created_at DESC LIMIT 25;
+"#;
+        sqlx::query_as(query).fetch_all(pool).await
+    }
+}

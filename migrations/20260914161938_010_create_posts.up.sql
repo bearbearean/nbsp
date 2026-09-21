@@ -6,3 +6,5 @@ CREATE TABLE IF NOT EXISTS posts (
     markdown_source TEXT NOT NULL,
     html_rendered TEXT NOT NULL
 );
+
+CREATE INDEX IF NOT EXISTS posts_created_at_idx ON posts (created_at);

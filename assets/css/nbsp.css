@@ -262,3 +262,25 @@ body {
     border-top: 1px solid #6c6c6c;
   }
 }
+
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .post-list-item {
+    background-color: #262626;
+    border-radius: 4px;
+    box-shadow: 0 0 4px 0px #000000;
+    list-style: none;
+    padding: 10px;
+
+    .post-title {
+      margin-bottom: 4px;
+    }
+  }
+}
+
+.no-underline {
+  text-decoration: none;
+}

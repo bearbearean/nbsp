@@ -14,7 +14,7 @@ mod user_invite_settings;
 pub use crate::prelude::*;
 pub use config::NbspConfig;
 pub use invite::Invite;
-pub use post::Post;
+pub use post::{Post, PostListItem};
 pub use refresh_token::RefreshToken;
 pub use user::User;
 pub use user_invite_settings::UserInviteSettings;

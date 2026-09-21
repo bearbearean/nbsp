@@ -3,7 +3,7 @@
 use askama::Template;
 
 use crate::{
-    database::{Invite, NbspConfig, Post, User, UserInviteSettings},
+    database::{Invite, NbspConfig, Post, PostListItem, User, UserInviteSettings},
     jwt::auth::Auth,
     utilities::{LoginUserError, PostNewError, RegisterUserError},
 };
@@ -16,6 +16,8 @@ pub struct Homepage {
     pub config: NbspConfig,
     /// The authentication context
     pub auth: Auth,
+    /// Recent posts to show to a logged in user
+    pub posts: Option<Vec<PostListItem>>,
 }
 
 /// A generic template for HTTP status codes
