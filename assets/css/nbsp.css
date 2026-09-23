@@ -30,10 +30,22 @@ body {
 .page-header {
   display: grid;
   column-gap: 1rem;
-  grid-template-columns: min-content auto;
-  grid-template-rows: auto auto;
+  grid-template-columns: max-content auto;
   margin-bottom: 10px;
   margin-top: 10px;
+
+  .logo-title-subtitle {
+    display: grid;
+    color: #ffffff;
+    column-gap: 1rem;
+    grid-template-columns: min-content auto;
+    grid-template-rows: auto auto;
+    text-decoration: none;
+
+    &:hover .logo {
+      box-shadow: 0 0 4px 0px #a2a2a2;
+    }
+  }
 
   .logo {
     align-self: center;
@@ -51,6 +63,11 @@ body {
   .subtitle {
     align-self: flex-start;
     font-size: 1.6rem;
+  }
+
+  .logged-in-user {
+    align-content: center;
+    text-align: right;
   }
 }
 
@@ -161,6 +178,11 @@ body {
       &:invalid {
         border-color: #ff4107bb;
       }
+
+      &.textarea {
+        min-height: 100px;
+        resize: vertical;
+      }
     }
   }
 
@@ -239,4 +261,26 @@ body {
   .divider {
     border-top: 1px solid #6c6c6c;
   }
+}
+
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  .post-list-item {
+    background-color: #262626;
+    border-radius: 4px;
+    box-shadow: 0 0 4px 0px #000000;
+    list-style: none;
+    padding: 10px;
+
+    .post-title {
+      margin-bottom: 4px;
+    }
+  }
+}
+
+.no-underline {
+  text-decoration: none;
 }
