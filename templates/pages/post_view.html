@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% import "macros/header.html" as m_header %}
+
+{% block body %}
+{{ m_header::page_header(config, auth.user) }}
+
+<main class="container section">
+  <h2 class="post-title">{{ post.title }}</h2>
+
+  <p class="post-creation">
+    Posted by
+    <a href="/user/{{ post_creator_username }}">{{ post_creator_username }}</a>
+    on
+    <time datetime="{{ post.created_at.format("%F") }}" class="post-created-at">{{ post.created_at.format("%B %e, %Y" ) }}</time>.
+  </p>
+
+  <div class="post-body">{{ post.html_rendered|safe }}</div>
+</main>
+{% endblock %}

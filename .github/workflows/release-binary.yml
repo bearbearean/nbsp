@@ -34,18 +34,22 @@ jobs:
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@v1
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-      - uses: taiki-e/setup-cross-toolchain-action@v1
+      - name: Install cross compile toolchain
+        uses: taiki-e/setup-cross-toolchain-action@v1
         with:
           target: ${{ matrix.target }}
         if: startsWith(matrix.os, 'ubuntu') && !contains(matrix.target, '-musl')
-      - uses: taiki-e/install-action@v2
+      - name: Install cross
+        uses: taiki-e/install-action@v2
         with:
           tool: cross
         if: contains(matrix.target, '-musl')
-      - uses: taiki-e/upload-rust-binary-action@v1
+      - name: Upload release binary
+        uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: nbsp
           target: ${{ matrix.target }}

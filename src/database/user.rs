@@ -136,6 +136,15 @@ impl User {
     pub fn is(&self, target_user: &User) -> bool {
         self.user_id == target_user.user_id
     }
+
+    /// Get the username of an existing user. This will error if the user does not exist
+    pub async fn get_username(user_id: i64, pool: &PgPool) -> sqlx::Result<String> {
+        let query = "SELECT username FROM users WHERE user_id = $1;";
+        sqlx::query_scalar(query)
+            .bind(user_id)
+            .fetch_one(pool)
+            .await
+    }
 }
 
 #[cfg(test)]

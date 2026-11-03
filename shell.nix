@@ -14,5 +14,7 @@ pkgs.mkShell rec {
     podman
     commitlint
     mdbook
+    cargo-nextest
+    cargo-llvm-cov
   ];
 }

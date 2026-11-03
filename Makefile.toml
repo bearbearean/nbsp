@@ -46,3 +46,13 @@ script = "touch migrations/$(date -u +'%Y%m%d%H%M%S')_$(printf '%03d' $(ls migra
 
 [tasks.install-git-hooks]
 script = "cp .git-hooks/* .git/hooks/"
+
+[tasks.test]
+clear = true
+dependencies = ["pg-isready"]
+script = "cargo llvm-cov --html nextest"
+
+[tasks.test-cov]
+clear = true
+dependencies = ["test"]
+script = "firefox target/llvm-cov/html/index.html"

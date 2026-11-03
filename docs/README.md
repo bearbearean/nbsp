@@ -17,3 +17,7 @@ For this reason, I've decided to have an attempt of my own at creating a better 
 nbsp is created and being developed by bearbearean, an individual developer from Belgium.
 
 You can contact me at [bear@bearbearean.dev](mailto:bear@bearbearean.dev) or [create an issue on GitHub](https://github.com/bearbearean/nbsp/issues).
+
+## AI Policy
+
+This project does not currently, has not in the past and will not in the future use LLMs or other "AI" tools for anything. Not for code, not for documentation, not for PRs or issues, not for anything. It's all created by a human being.

@@ -1,0 +1,25 @@
+{% macro post_list(posts: Vec<PostListItem>) %}
+  {% if posts.is_empty() %}
+    <p>No posts found, time to create some!</p>
+  {% else %}
+    <ul class="post-list">
+      {% for post in posts %}
+        {{ post_list_item(post) }}
+      {% endfor %}
+    </ul>
+  {% endif %}
+{% endmacro %}
+
+{% macro post_list_item(post: PostListItem) %}
+<li class="post-list-item">
+  <h2 class="post-title">
+    <a class="no-underline" href="/post/view/{{ post.post_id }}">{{ post.title }}</a>
+  </h2>
+  <p class="post-creation">
+    By
+    <a class="no-underline" href="/user/{{ post.creator_username }}">{{ post.creator_username }}</a>
+    on
+    <time datetime="{{ post.created_at.format("%F") }}" class="post-created-at">{{ post.created_at.format("%B %e, %Y" ) }}</time>.
+  </p>
+</li>
+{% endmacro %}

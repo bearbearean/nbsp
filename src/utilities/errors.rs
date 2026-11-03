@@ -2,6 +2,8 @@
 
 use std::fmt::Display;
 
+use crate::database::Post;
+
 /// Errors that can happen when a user is registering an account, to be used as a feedback message
 pub enum RegisterUserError {
     /// An invalid invite code, can be an unknown code, already consumed, etc.
@@ -37,6 +39,33 @@ impl Display for LoginUserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = match self {
             Self::IncorrectLogin => "Incorrect username and password",
+        };
+
+        writeln!(f, "{message}")
+    }
+}
+
+/// Errors that can happen when a user creates a new post
+pub enum PostNewError {
+    /// Title is too short or too long
+    TitleLength,
+    /// Markdown is too short or too long
+    MarkdownLength,
+}
+
+impl Display for PostNewError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let message = match self {
+            Self::TitleLength => &format!(
+                "The title must be at least {} and at most {} characters long",
+                Post::TITLE_LENGTH.start(),
+                Post::TITLE_LENGTH.end(),
+            ),
+            Self::MarkdownLength => &format!(
+                "The Markdown body must be at least {} and at most {} characters long",
+                Post::MARKDOWN_LENGTH.start(),
+                Post::MARKDOWN_LENGTH.end()
+            ),
         };
 
         writeln!(f, "{message}")
